@@ -9,7 +9,10 @@ import (
 	"time"
 )
 
-const FormatHeader = "X-Glass-Format"
+const (
+	FormatHeader = "X-Glass-Format"
+	FormatQuery  = "format"
+)
 
 type reflection struct {
 	Method    string              `json:"method"`
@@ -49,7 +52,7 @@ func Handler(maxBody int64) http.HandlerFunc {
 
 		log.Print("\n" + ref.terminal())
 
-		if strings.EqualFold(r.Header.Get(FormatHeader), "html") {
+		if wantsHTML(r) {
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			io.WriteString(w, ref.html())
 
@@ -59,6 +62,15 @@ func Handler(maxBody int64) http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json")
 		io.WriteString(w, ref.json())
 	}
+}
+
+func wantsHTML(r *http.Request) bool {
+	format := r.Header.Get(FormatHeader)
+	if format == "" {
+		format = r.URL.Query().Get(FormatQuery)
+	}
+
+	return strings.EqualFold(format, "html")
 }
 
 func readBody(r *http.Request, maxBody int64) (string, int, bool) {

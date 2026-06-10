@@ -14,7 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Always-on colored terminal rendering written to stdout (visible via
   `docker logs`), independent of the request.
 - Selectable HTTP response format via the `X-Glass-Format` header: `json`
-  (default) or `html`.
+  (default) or `html`, with a `?format=` query-param fallback so HTML can be
+  opened directly in a browser.
 - HTML rendering with auto-escaped values to prevent reflected content from
   executing in the browser.
 - `PORT` and `MAX_BODY_BYTES` environment configuration, with body truncation

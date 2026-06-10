@@ -97,12 +97,27 @@ func TestHandlerDefaultsToJSON(t *testing.T) {
 	}
 }
 
-func TestHandlerHTMLFormat(t *testing.T) {
+func TestHandlerHTMLViaHeader(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/page", nil)
 	req.Header.Set(FormatHeader, "html")
 
 	Handler(1024)(rec, req)
+
+	assertHTML(t, rec)
+}
+
+func TestHandlerHTMLViaQuery(t *testing.T) {
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/page?format=html", nil)
+
+	Handler(1024)(rec, req)
+
+	assertHTML(t, rec)
+}
+
+func assertHTML(t *testing.T, rec *httptest.ResponseRecorder) {
+	t.Helper()
 
 	if ct := rec.Header().Get("Content-Type"); ct != "text/html; charset=utf-8" {
 		t.Errorf("content-type = %q", ct)

@@ -18,14 +18,20 @@ Then point anything at it — every method, every path is answered with the full
 request it received (method, URL, query, headers, client address, body).
 
 The **HTTP response** is `json` by default and `html` on demand, selected by a
-dedicated header so it never collides with the request's own `Accept`:
+dedicated header so it never collides with the request's own `Accept` — or by a
+`?format=` query param so it works straight from a browser address bar:
 
 ```sh
 # JSON (default)
 curl -X POST 'localhost:8080/api/users?page=2' -d '{"name":"ada"}'
 
-# HTML — open it in a browser-friendly client
+# HTML via header
 curl 'localhost:8080/api/users?page=2' -H 'X-Glass-Format: html'
+```
+
+```text
+# HTML in a browser — just add ?format=html to the URL
+http://localhost:8080/api/users?page=2&format=html
 ```
 
 Meanwhile the **container logs always get a colored, aligned rendering** of every
@@ -58,9 +64,10 @@ docker logs -f <container>
 | `PORT`           | `8080`    | Port to listen on.                       |
 | `MAX_BODY_BYTES` | `1048576` | Max body bytes reflected before cut-off. |
 
-| Request header   | Values          | Effect                                |
-| ---------------- | --------------- | ------------------------------------- |
-| `X-Glass-Format` | `json` / `html` | Response format. Defaults to `json`.  |
+| Selector                | Values          | Effect                                      |
+| ----------------------- | --------------- | ------------------------------------------- |
+| `X-Glass-Format` header | `json` / `html` | Response format. Takes precedence.          |
+| `?format=` query param  | `json` / `html` | Browser-friendly fallback. Defaults `json`. |
 
 ## Getting Started
 
