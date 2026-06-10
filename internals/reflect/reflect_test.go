@@ -69,15 +69,36 @@ func TestHTMLEscapesInput(t *testing.T) {
 	}
 }
 
-func TestTerminalIsColored(t *testing.T) {
-	out := build_("DELETE", "/gone", "").terminal()
+func TestActivityLine(t *testing.T) {
+	line := build_("DELETE", "/gone?id=7", "SENSITIVE-BODY").activity("json")
 
-	if !strings.Contains(out, "\x1b[") {
-		t.Errorf("expected ANSI color codes in terminal output:\n%q", out)
+	if !strings.Contains(line, "\x1b[") {
+		t.Errorf("expected ANSI color codes:\n%q", line)
 	}
 
-	if !strings.Contains(out, "DELETE") {
-		t.Errorf("expected method in output:\n%s", out)
+	for _, want := range []string{"DELETE", "/gone?id=7", "json"} {
+		if !strings.Contains(line, want) {
+			t.Errorf("activity line missing %q:\n%s", want, line)
+		}
+	}
+
+	if strings.Contains(line, "SENSITIVE-BODY") {
+		t.Errorf("request body must not appear in the activity log:\n%s", line)
+	}
+
+	if strings.Contains(line, "\n") {
+		t.Errorf("activity log must be a single line:\n%q", line)
+	}
+}
+
+func TestActivitySanitizesControlChars(t *testing.T) {
+	ref := build_("GET", "/x", "")
+	ref.URI = "/x\x1b[2J\x07"
+
+	line := ref.activity("json")
+
+	if strings.Contains(line, "\x1b[2J") || strings.Contains(line, "\x07") {
+		t.Errorf("control chars from the request must be stripped:\n%q", line)
 	}
 }
 

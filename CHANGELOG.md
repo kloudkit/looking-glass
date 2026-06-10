@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Logs are now a single colored activity line per request (time, client, method,
+  path, response format, body size) instead of the full request rendering. The
+  request body and headers no longer appear in stdout, and the logged path is
+  stripped of control characters — closing a terminal-injection vector where a
+  crafted request could emit escape sequences into an operator's terminal.
+
 ## [0.1.0] - 2026-06-10
 
 ### Added

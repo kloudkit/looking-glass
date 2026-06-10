@@ -34,11 +34,13 @@ curl 'localhost:8080/api/users?page=2' -H 'X-Glass-Format: html'
 http://localhost:8080/api/users?page=2&format=html
 ```
 
-Meanwhile the **container logs always get a colored, aligned rendering** of every
-request, regardless of what the caller asked for:
+Meanwhile the **container logs stay a concise, colored activity stream** — one
+line per request (time, client, method, path, response format, body size), never
+the request contents:
 
 ```sh
 docker logs -f <container>
+# 2026/06/10 12:00:00 10.0.0.1:54321  POST  /api/users?page=2  →  json  14b
 ```
 
 ## What's Inside
@@ -47,11 +49,11 @@ docker logs -f <container>
   the full request reflected back.
 - **Two response formats** — `json` (default) or `html`, chosen with the
   `X-Glass-Format` header (never the request's `Accept`).
-- **Always-on color in the terminal** — the same request is rendered to stdout
-  with color and aligned tables, independent of the request, so `docker logs`
-  stays readable.
+- **Colored activity log** — stdout gets one readable line per request (time,
+  client, method, path, format, size), so `docker logs` stays a clean access
+  stream and request contents never leak into the logs.
 - **Safe HTML** — reflected values are escaped, so a malicious body can't execute
-  in the browser.
+  in the browser; the logged path is stripped of control characters.
 - **Bounded** — request bodies are capped (default `1 MiB`) so a stray upload
   can't take the box down; truncation is shown in every rendering.
 - **Tiny image** — a single static Go binary on a shell-less, non-root distroless

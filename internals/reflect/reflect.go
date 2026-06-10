@@ -4,7 +4,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"sort"
 	"strings"
 	"time"
 )
@@ -50,9 +49,14 @@ func Handler(maxBody int64) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ref := build(r, maxBody)
 
-		log.Print("\n" + ref.terminal())
-
+		format := "json"
 		if wantsHTML(r) {
+			format = "html"
+		}
+
+		log.Print(ref.activity(format))
+
+		if format == "html" {
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			io.WriteString(w, ref.html())
 
@@ -85,14 +89,4 @@ func readBody(r *http.Request, maxBody int64) (string, int, bool) {
 	}
 
 	return string(data), len(data), truncated
-}
-
-func sortedKeys(m map[string][]string) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-
-	return keys
 }
