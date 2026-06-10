@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-06-10
+
 ### Added
 
 - Wildcard HTTP reflector answering every method and path with the request it
@@ -22,4 +24,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   noted in every rendering.
 - Multi-arch (`amd64`/`arm64`) image published to GHCR on tag push.
 
-[Unreleased]: https://github.com/kloudkit/looking-glass/commits/main
+[Unreleased]: https://github.com/kloudkit/looking-glass/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/kloudkit/looking-glass/releases/tag/v0.1.0
