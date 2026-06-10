@@ -14,46 +14,42 @@
 docker run --rm -p 8080:8080 ghcr.io/kloudkit/looking-glass:latest
 ```
 
-Then point anything at it — every method, every path is answered with a readable
-dump of the request it received:
+Then point anything at it — every method, every path is answered with the full
+request it received (method, URL, query, headers, client address, body).
+
+The **HTTP response** is `json` by default and `html` on demand, selected by a
+dedicated header so it never collides with the request's own `Accept`:
 
 ```sh
-curl -X POST 'localhost:8080/api/users?page=2' \
-  -H 'Content-Type: application/json' \
-  -d '{"name":"ada"}'
+# JSON (default)
+curl -X POST 'localhost:8080/api/users?page=2' -d '{"name":"ada"}'
+
+# HTML — open it in a browser-friendly client
+curl 'localhost:8080/api/users?page=2' -H 'X-Glass-Format: html'
 ```
 
-```text
-──────────────────────────────────────────────
-POST /api/users?page=2  HTTP/1.1
-──────────────────────────────────────────────
-Time:    2026-06-10T12:00:00Z
-Remote:  10.0.0.1:54321
-Host:    localhost:8080
+Meanwhile the **container logs always get a colored, aligned rendering** of every
+request, regardless of what the caller asked for:
 
-Query:
-  page = 2
-
-Headers:
-  Accept:       */*
-  Content-Type: application/json
-  User-Agent:   curl/8.5.0
-
-Body (14 bytes):
-  {"name":"ada"}
+```sh
+docker logs -f <container>
 ```
 
 ## What's Inside
 
 - **Wildcard everything** — every HTTP method on every path returns `200` with
   the full request reflected back.
-- **Human-readable** dump of the method, URL, query params, headers (including
-  the `User-Agent`), client address, and body.
-- **Logs to stdout** too — the same block lands in `docker logs`.
-- **Zero dependencies** — a single static Go binary on a shell-less, non-root
-  distroless image.
+- **Two response formats** — `json` (default) or `html`, chosen with the
+  `X-Glass-Format` header (never the request's `Accept`).
+- **Always-on color in the terminal** — the same request is rendered to stdout
+  with color and aligned tables, independent of the request, so `docker logs`
+  stays readable.
+- **Safe HTML** — reflected values are escaped, so a malicious body can't execute
+  in the browser.
 - **Bounded** — request bodies are capped (default `1 MiB`) so a stray upload
-  can't take the box down.
+  can't take the box down; truncation is shown in every rendering.
+- **Tiny image** — a single static Go binary on a shell-less, non-root distroless
+  base.
 
 ## Configuration
 
@@ -61,6 +57,10 @@ Body (14 bytes):
 | ---------------- | --------- | ---------------------------------------- |
 | `PORT`           | `8080`    | Port to listen on.                       |
 | `MAX_BODY_BYTES` | `1048576` | Max body bytes reflected before cut-off. |
+
+| Request header   | Values          | Effect                                |
+| ---------------- | --------------- | ------------------------------------- |
+| `X-Glass-Format` | `json` / `html` | Response format. Defaults to `json`.  |
 
 ## Getting Started
 

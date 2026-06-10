@@ -1,104 +1,114 @@
 package reflect
 
 import (
+	"encoding/json"
 	"net/http/httptest"
 	"strings"
 	"testing"
 )
 
-func TestRender(t *testing.T) {
-	cases := []struct {
-		name     string
-		method   string
-		target   string
-		body     string
-		maxBody  int64
-		contains []string
-		want     bool
-	}{
-		{
-			name:    "method and path",
-			method:  "DELETE",
-			target:  "/anything/else",
-			maxBody: 1024,
-			contains: []string{
-				"DELETE /anything/else",
-			},
-		},
-		{
-			name:    "query params",
-			method:  "GET",
-			target:  "/api?page=2&q=hi",
-			maxBody: 1024,
-			contains: []string{
-				"Query:",
-				"page = 2",
-				"q    = hi",
-			},
-		},
-		{
-			name:    "body reflected",
-			method:  "POST",
-			target:  "/users",
-			body:    `{"name":"ada"}`,
-			maxBody: 1024,
-			contains: []string{
-				"Body (14 bytes):",
-				`{"name":"ada"}`,
-			},
-		},
-		{
-			name:    "body truncated",
-			method:  "POST",
-			target:  "/big",
-			body:    strings.Repeat("x", 50),
-			maxBody: 10,
-			contains: []string{
-				"Body (10 bytes, truncated):",
-			},
-			want: true,
-		},
+func build_(method, target, body string) reflection {
+	req := httptest.NewRequest(method, target, strings.NewReader(body))
+	req.Header.Set("X-Trace", "abc")
+
+	return build(req, 1024)
+}
+
+func TestBuild(t *testing.T) {
+	ref := build_("POST", "/api?page=2&q=hi", `{"name":"ada"}`)
+
+	if ref.Method != "POST" || ref.URI != "/api?page=2&q=hi" {
+		t.Errorf("method/uri = %q %q", ref.Method, ref.URI)
 	}
 
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			req := httptest.NewRequest(tc.method, tc.target, strings.NewReader(tc.body))
-			req.Header.Set("X-Trace", "abc")
+	if got := ref.Query["page"]; len(got) != 1 || got[0] != "2" {
+		t.Errorf("query page = %v", ref.Query["page"])
+	}
 
-			out, truncated := Render(req, tc.maxBody)
+	if got := ref.Headers["X-Trace"]; len(got) != 1 || got[0] != "abc" {
+		t.Errorf("header X-Trace = %v", ref.Headers["X-Trace"])
+	}
 
-			if truncated != tc.want {
-				t.Errorf("truncated = %v, want %v", truncated, tc.want)
-			}
-
-			for _, want := range tc.contains {
-				if !strings.Contains(out, want) {
-					t.Errorf("output missing %q\n--- got ---\n%s", want, out)
-				}
-			}
-
-			if !strings.Contains(out, "X-Trace: abc") {
-				t.Errorf("output missing header X-Trace\n--- got ---\n%s", out)
-			}
-		})
+	if ref.Body != `{"name":"ada"}` || ref.BodyBytes != 14 || ref.Truncated {
+		t.Errorf("body = %q (%d, trunc=%v)", ref.Body, ref.BodyBytes, ref.Truncated)
 	}
 }
 
-func TestHandler(t *testing.T) {
+func TestBuildTruncates(t *testing.T) {
+	req := httptest.NewRequest("POST", "/big", strings.NewReader(strings.Repeat("x", 50)))
+
+	ref := build(req, 10)
+
+	if !ref.Truncated || ref.BodyBytes != 10 {
+		t.Errorf("expected truncated at 10, got %d (trunc=%v)", ref.BodyBytes, ref.Truncated)
+	}
+}
+
+func TestJSON(t *testing.T) {
+	out := build_("GET", "/x?a=1", "").json()
+
+	var parsed map[string]any
+	if err := json.Unmarshal([]byte(out), &parsed); err != nil {
+		t.Fatalf("invalid JSON: %v\n%s", err, out)
+	}
+
+	if parsed["method"] != "GET" {
+		t.Errorf("method = %v", parsed["method"])
+	}
+}
+
+func TestHTMLEscapesInput(t *testing.T) {
+	out := build_("POST", "/x", "<script>alert(1)</script>").html()
+
+	if strings.Contains(out, "<script>alert(1)</script>") {
+		t.Errorf("body was not escaped:\n%s", out)
+	}
+
+	if !strings.Contains(out, "&lt;script&gt;") {
+		t.Errorf("expected escaped body:\n%s", out)
+	}
+}
+
+func TestTerminalIsColored(t *testing.T) {
+	out := build_("DELETE", "/gone", "").terminal()
+
+	if !strings.Contains(out, "\x1b[") {
+		t.Errorf("expected ANSI color codes in terminal output:\n%q", out)
+	}
+
+	if !strings.Contains(out, "DELETE") {
+		t.Errorf("expected method in output:\n%s", out)
+	}
+}
+
+func TestHandlerDefaultsToJSON(t *testing.T) {
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest("PATCH", "/health?ping=1", nil)
+	req := httptest.NewRequest("GET", "/health?ping=1", nil)
 
 	Handler(1024)(rec, req)
 
-	if rec.Code != 200 {
-		t.Fatalf("status = %d, want 200", rec.Code)
-	}
-
-	if ct := rec.Header().Get("Content-Type"); ct != "text/plain; charset=utf-8" {
+	if ct := rec.Header().Get("Content-Type"); ct != "application/json" {
 		t.Errorf("content-type = %q", ct)
 	}
 
-	if !strings.Contains(rec.Body.String(), "PATCH /health?ping=1") {
-		t.Errorf("body missing request line\n%s", rec.Body.String())
+	var parsed map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &parsed); err != nil {
+		t.Fatalf("invalid JSON: %v", err)
+	}
+}
+
+func TestHandlerHTMLFormat(t *testing.T) {
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/page", nil)
+	req.Header.Set(FormatHeader, "html")
+
+	Handler(1024)(rec, req)
+
+	if ct := rec.Header().Get("Content-Type"); ct != "text/html; charset=utf-8" {
+		t.Errorf("content-type = %q", ct)
+	}
+
+	if !strings.Contains(rec.Body.String(), "<!doctype html>") {
+		t.Errorf("expected HTML document:\n%s", rec.Body.String())
 	}
 }
