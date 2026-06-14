@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-06-14
+
 ### Added
 
 - A **Copy as** control on the HTML view that copies the reflected request to the
@@ -40,5 +42,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   noted in every rendering.
 - Multi-arch (`amd64`/`arm64`) image published to GHCR on tag push.
 
-[Unreleased]: https://github.com/kloudkit/looking-glass/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/kloudkit/looking-glass/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/kloudkit/looking-glass/releases/tag/v0.2.0
 [0.1.0]: https://github.com/kloudkit/looking-glass/releases/tag/v0.1.0
