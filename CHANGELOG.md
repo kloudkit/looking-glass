@@ -7,8 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- A **Copy as** control on the HTML view that copies the reflected request to the
+  clipboard as pretty JSON or a raw HTTP dump (request line, headers, body).
+
 ### Changed
 
+- The default response format is now `html` instead of `json`; request `json`
+  explicitly via the `X-Glass-Format: json` header or the `?format=json` query
+  param.
 - Logs are now a single colored activity line per request (time, client, method,
   path, response format, body size) instead of the full request rendering. The
   request body and headers no longer appear in stdout, and the logged path is

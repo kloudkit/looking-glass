@@ -17,22 +17,27 @@ docker run --rm -p 8080:8080 ghcr.io/kloudkit/looking-glass:latest
 Then point anything at it — every method, every path is answered with the full
 request it received (method, URL, query, headers, client address, body).
 
-The **HTTP response** is `json` by default and `html` on demand, selected by a
+The **HTTP response** is `html` by default and `json` on demand, selected by a
 dedicated header so it never collides with the request's own `Accept` — or by a
-`?format=` query param so it works straight from a browser address bar:
+`?format=` query param so the JSON view is reachable straight from a browser
+address bar:
 
 ```sh
-# JSON (default)
-curl -X POST 'localhost:8080/api/users?page=2' -d '{"name":"ada"}'
+# HTML (default)
+curl 'localhost:8080/api/users?page=2'
 
-# HTML via header
-curl 'localhost:8080/api/users?page=2' -H 'X-Glass-Format: html'
+# JSON via header
+curl -X POST 'localhost:8080/api/users?page=2' -d '{"name":"ada"}' -H 'X-Glass-Format: json'
 ```
 
 ```text
-# HTML in a browser — just add ?format=html to the URL
-http://localhost:8080/api/users?page=2&format=html
+# JSON in a browser — just add ?format=json to the URL
+http://localhost:8080/api/users?page=2&format=json
 ```
+
+The HTML view also carries a **Copy as** control in the corner — grab the request
+as pretty `JSON` or as a `Raw` HTTP dump (request line, headers, body) without
+leaving the page.
 
 Meanwhile the **container logs stay a concise, colored activity stream** — one
 line per request (time, client, method, path, response format, body size), never
@@ -40,15 +45,17 @@ the request contents:
 
 ```sh
 docker logs -f <container>
-# 2026/06/10 12:00:00 10.0.0.1:54321  POST  /api/users?page=2  →  json  14b
+# 2026/06/10 12:00:00 10.0.0.1:54321  POST  /api/users?page=2  →  html  14b
 ```
 
 ## What's Inside
 
 - **Wildcard everything** — every HTTP method on every path returns `200` with
   the full request reflected back.
-- **Two response formats** — `json` (default) or `html`, chosen with the
+- **Two response formats** — `html` (default) or `json`, chosen with the
   `X-Glass-Format` header (never the request's `Accept`).
+- **Copy as** — the HTML view copies the request to your clipboard as pretty
+  `JSON` or a `Raw` HTTP dump, no devtools required.
 - **Colored activity log** — stdout gets one readable line per request (time,
   client, method, path, format, size), so `docker logs` stays a clean access
   stream and request contents never leak into the logs.
@@ -68,8 +75,8 @@ docker logs -f <container>
 
 | Selector                | Values          | Effect                                      |
 | ----------------------- | --------------- | ------------------------------------------- |
-| `X-Glass-Format` header | `json` / `html` | Response format. Takes precedence.          |
-| `?format=` query param  | `json` / `html` | Browser-friendly fallback. Defaults `json`. |
+| `X-Glass-Format` header | `html` / `json` | Response format. Takes precedence.          |
+| `?format=` query param  | `html` / `json` | Browser-friendly fallback. Defaults `html`. |
 
 ## Getting Started
 

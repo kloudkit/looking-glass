@@ -49,9 +49,9 @@ func Handler(maxBody int64) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ref := build(r, maxBody)
 
-		format := "json"
-		if wantsHTML(r) {
-			format = "html"
+		format := "html"
+		if wantsJSON(r) {
+			format = "json"
 		}
 
 		log.Print(ref.activity(format))
@@ -68,13 +68,13 @@ func Handler(maxBody int64) http.HandlerFunc {
 	}
 }
 
-func wantsHTML(r *http.Request) bool {
+func wantsJSON(r *http.Request) bool {
 	format := r.Header.Get(FormatHeader)
 	if format == "" {
 		format = r.URL.Query().Get(FormatQuery)
 	}
 
-	return strings.EqualFold(format, "html")
+	return strings.EqualFold(format, "json")
 }
 
 func readBody(r *http.Request, maxBody int64) (string, int, bool) {

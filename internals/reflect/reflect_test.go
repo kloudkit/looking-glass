@@ -102,39 +102,61 @@ func TestActivitySanitizesControlChars(t *testing.T) {
 	}
 }
 
-func TestHandlerDefaultsToJSON(t *testing.T) {
+func TestHandlerDefaultsToHTML(t *testing.T) {
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/health?ping=1", nil)
-
-	Handler(1024)(rec, req)
-
-	if ct := rec.Header().Get("Content-Type"); ct != "application/json" {
-		t.Errorf("content-type = %q", ct)
-	}
-
-	var parsed map[string]any
-	if err := json.Unmarshal(rec.Body.Bytes(), &parsed); err != nil {
-		t.Fatalf("invalid JSON: %v", err)
-	}
-}
-
-func TestHandlerHTMLViaHeader(t *testing.T) {
-	rec := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/page", nil)
-	req.Header.Set(FormatHeader, "html")
+	req := httptest.NewRequest("GET", "/page?ping=1", nil)
 
 	Handler(1024)(rec, req)
 
 	assertHTML(t, rec)
 }
 
-func TestHandlerHTMLViaQuery(t *testing.T) {
+func TestHandlerJSONViaHeader(t *testing.T) {
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/page?format=html", nil)
+	req := httptest.NewRequest("GET", "/health", nil)
+	req.Header.Set(FormatHeader, "json")
 
 	Handler(1024)(rec, req)
 
-	assertHTML(t, rec)
+	assertJSON(t, rec)
+}
+
+func TestHandlerJSONViaQuery(t *testing.T) {
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/health?format=json", nil)
+
+	Handler(1024)(rec, req)
+
+	assertJSON(t, rec)
+}
+
+func TestFlat(t *testing.T) {
+	out := build_("POST", "/api?page=2", `{"name":"ada"}`).flat()
+
+	for _, want := range []string{
+		"POST /api?page=2 HTTP/1.1",
+		"Host: example.com",
+		"X-Trace: abc",
+		`{"name":"ada"}`,
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("flat output missing %q:\n%s", want, out)
+		}
+	}
+}
+
+func TestHTMLHasCopyControl(t *testing.T) {
+	out := build_("GET", "/x?a=1", "").html()
+
+	for _, want := range []string{
+		`id="copy-json"`,
+		`id="copy-flat"`,
+		"navigator.clipboard.writeText",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("HTML missing copy control %q:\n%s", want, out)
+		}
+	}
 }
 
 func assertHTML(t *testing.T, rec *httptest.ResponseRecorder) {
@@ -146,5 +168,18 @@ func assertHTML(t *testing.T, rec *httptest.ResponseRecorder) {
 
 	if !strings.Contains(rec.Body.String(), "<!doctype html>") {
 		t.Errorf("expected HTML document:\n%s", rec.Body.String())
+	}
+}
+
+func assertJSON(t *testing.T, rec *httptest.ResponseRecorder) {
+	t.Helper()
+
+	if ct := rec.Header().Get("Content-Type"); ct != "application/json" {
+		t.Errorf("content-type = %q", ct)
+	}
+
+	var parsed map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &parsed); err != nil {
+		t.Fatalf("invalid JSON: %v", err)
 	}
 }
