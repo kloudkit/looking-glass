@@ -11,30 +11,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `--port` and `--max-body` flags, which override `PORT` and `MAX_BODY_BYTES`,
+- 🚩 `--port` and `--max-body` flags, which override `PORT` and `MAX_BODY_BYTES`,
   plus styled `--help` and `--version`.
 
 ### Changed
 
-- The activity log and startup lines use the logo's colors: lavender for the
+- 🎨 The activity log and startup lines use the logo's colors: lavender for the
   request, yellow for what it is reflected as.
-- The HTML view carries the logo and its favicon, in the same colors.
-- `--version` reports the release tag in published images, and `dev` for any
+- 🖼️ The HTML view carries the logo and its favicon, in the same colors.
+- 🔖 `--version` reports the release tag in published images, and `dev` for any
   other build instead of a Go pseudo-version.
 
 ## [0.2.0] - 2026-06-14
 
 ### Added
 
-- A **Copy as** control on the HTML view that copies the reflected request to the
+- 📋 A **Copy as** control on the HTML view that copies the reflected request to the
   clipboard as pretty JSON or a raw HTTP dump (request line, headers, body).
 
 ### Changed
 
-- The default response format is now `html` instead of `json`; request `json`
+- 🌐 The default response format is now `html` instead of `json`; request `json`
   explicitly via the `X-Glass-Format: json` header or the `?format=json` query
   param.
-- Logs are now a single colored activity line per request (time, client, method,
+- 🔒 Logs are now a single colored activity line per request (time, client, method,
   path, response format, body size) instead of the full request rendering. The
   request body and headers no longer appear in stdout, and the logged path is
   stripped of control characters — closing a terminal-injection vector where a
@@ -44,18 +44,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Wildcard HTTP reflector answering every method and path with the request it
+- 🔎 Wildcard HTTP reflector answering every method and path with the request it
   received.
-- Always-on colored terminal rendering written to stdout (visible via
+- 🖥️ Always-on colored terminal rendering written to stdout (visible via
   `docker logs`), independent of the request.
-- Selectable HTTP response format via the `X-Glass-Format` header: `json`
+- 🔀 Selectable HTTP response format via the `X-Glass-Format` header: `json`
   (default) or `html`, with a `?format=` query-param fallback so HTML can be
   opened directly in a browser.
-- HTML rendering with auto-escaped values to prevent reflected content from
+- 🛡️ HTML rendering with auto-escaped values to prevent reflected content from
   executing in the browser.
-- `PORT` and `MAX_BODY_BYTES` environment configuration, with body truncation
+- ⚙️ `PORT` and `MAX_BODY_BYTES` environment configuration, with body truncation
   noted in every rendering.
-- Multi-arch (`amd64`/`arm64`) image published to GHCR on tag push.
+- 🐳 Multi-arch (`amd64`/`arm64`) image published to GHCR on tag push.
 
 [Unreleased]: https://github.com/kloudkit/looking-glass/compare/v0.3.0...HEAD
 [0.3.0]: https://github.com/kloudkit/looking-glass/releases/tag/v0.3.0
