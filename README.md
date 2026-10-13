@@ -1,3 +1,5 @@
+![Looking Glass — see exactly what is hitting your service by KloudKIT](https://raw.githubusercontent.com/kloudkit/looking-glass/main/brand/looking-glass-banner.svg)
+
 # Kloud • Looking Glass
 
 > 🔎 **Drop-in HTTP request reflector** — see *exactly* what is hitting your service
@@ -101,4 +103,8 @@ docker run --rm -p 8080:8080 looking-glass
 
 ## License
 
-Released under the [**MIT License**](https://github.com/kloudkit/looking-glass/blob/main/LICENSE)
+Released under the [**MIT License**](https://github.com/kloudkit/looking-glass/blob/main/LICENSE),
+**except** the [`brand/`](brand) directory.
+
+The Looking Glass and KloudKIT logos, icons and other brand assets are proprietary and
+**all rights reserved**; see [`brand/LICENSE`](brand/LICENSE).
