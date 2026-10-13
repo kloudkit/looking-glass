@@ -83,6 +83,8 @@ jobs:
         with:
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            version=${{ github.ref_name }}
           context: .
           labels: ${{ steps.meta.outputs.labels }}
           platforms: linux/amd64,linux/arm64

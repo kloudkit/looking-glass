@@ -159,6 +159,24 @@ func TestHTMLHasCopyControl(t *testing.T) {
 	}
 }
 
+func TestHTMLHasLogo(t *testing.T) {
+	out := build_("GET", "/x", "").html()
+
+	for _, want := range []string{
+		`<link rel="icon" href="data:image/svg+xml,`,
+		`<svg class="logo"`,
+		`king glass`,
+		`@media (prefers-reduced-motion: reduce)`,
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("HTML missing logo part %q", want)
+		}
+	}
+	if strings.Contains(out, "ZgotmplZ") {
+		t.Error("html/template rejected a logo URL or attribute")
+	}
+}
+
 func assertHTML(t *testing.T, rec *httptest.ResponseRecorder) {
 	t.Helper()
 

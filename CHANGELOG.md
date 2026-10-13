@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `--port` and `--max-body` flags, which override `PORT` and `MAX_BODY_BYTES`,
+  plus styled `--help` and `--version`.
+
+### Changed
+
+- The activity log and startup lines use the logo's colors: lavender for the
+  request, yellow for what it is reflected as.
+- The HTML view carries the logo and its favicon, in the same colors.
+- `--version` reports the release tag in published images, and `dev` for any
+  other build instead of a Go pseudo-version.
+
 ## [0.2.0] - 2026-06-14
 
 ### Added

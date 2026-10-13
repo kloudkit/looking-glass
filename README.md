@@ -70,10 +70,13 @@ docker logs -f <container>
 
 ## Configuration
 
-| Variable         | Default   | Description                              |
-| ---------------- | --------- | ---------------------------------------- |
-| `PORT`           | `8080`    | Port to listen on.                       |
-| `MAX_BODY_BYTES` | `1048576` | Max body bytes reflected before cut-off. |
+| Flag             | Variable         | Default   | Description                              |
+| ---------------- | ---------------- | --------- | ---------------------------------------- |
+| `-p`, `--port`   | `PORT`           | `8080`    | Port to listen on.                       |
+| `--max-body`     | `MAX_BODY_BYTES` | `1048576` | Max body bytes reflected before cut-off. |
+
+A flag wins over its variable. `looking-glass --help` lists them, and `--version`
+prints the version.
 
 | Selector                | Values          | Effect                                      |
 | ----------------------- | --------------- | ------------------------------------------- |

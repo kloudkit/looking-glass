@@ -2,17 +2,17 @@ package reflect
 
 import (
 	"fmt"
-	"image/color"
 	"strings"
 
-	"charm.land/lipgloss/v2"
+	"github.com/kloudkit/looking-glass/internals/ui"
 )
 
+// The request side is lavender, what it is reflected as is yellow, as in the logo.
 var (
-	mutedStyle  = lipgloss.NewStyle().Foreground(color.RGBA{115, 121, 148, 255})
-	methodStyle = lipgloss.NewStyle().Foreground(color.RGBA{140, 170, 238, 255}).Bold(true)
-	formatStyle = lipgloss.NewStyle().Foreground(color.RGBA{129, 200, 190, 255})
-	pathStyle   = lipgloss.NewStyle().Foreground(color.RGBA{198, 208, 245, 255})
+	mutedStyle  = ui.Muted
+	methodStyle = ui.Left
+	formatStyle = ui.Right
+	pathStyle   = ui.Plain
 )
 
 func (ref reflection) activity(format string) string {
