@@ -18,8 +18,8 @@ import (
 
 	"charm.land/fang/v2"
 	"github.com/charmbracelet/x/term"
-	"github.com/kloudkit/looking-glass/internals/reflect"
-	"github.com/kloudkit/looking-glass/internals/ui"
+	"github.com/kloudkit/looking-glass/internal/reflect"
+	"github.com/kloudkit/looking-glass/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -28,7 +28,7 @@ const (
 	defaultMaxBody = 1 << 20 // 1 MiB
 )
 
-// version is stamped at build time with -ldflags "-X .../internals/cli.version=v1.2.3".
+// version is stamped at build time with -ldflags "-X .../internal/cli.version=v1.2.3".
 var version = "dev"
 
 var releaseTag = regexp.MustCompile(`^v?\d+\.\d+\.\d+$`)

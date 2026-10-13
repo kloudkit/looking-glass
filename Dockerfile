@@ -6,10 +6,10 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY main.go ./
-COPY internals ./internals
+COPY internal ./internal
 ARG version=dev
 RUN CGO_ENABLED=0 go build -trimpath \
-      -ldflags="-s -w -X github.com/kloudkit/looking-glass/internals/cli.version=${version}" \
+      -ldflags="-s -w -X github.com/kloudkit/looking-glass/internal/cli.version=${version}" \
       -o /looking-glass .
 
 FROM gcr.io/distroless/static-debian13:nonroot

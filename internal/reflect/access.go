@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/kloudkit/looking-glass/internals/ui"
+	"github.com/kloudkit/looking-glass/internal/ui"
 )
 
 // The request side is lavender, what it is reflected as is yellow, as in the logo.
