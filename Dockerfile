@@ -1,5 +1,5 @@
 # renovate: datasource=docker depName=golang
-ARG go_tag=1.26.2
+ARG go_tag=1.27.2
 
 FROM golang:${go_tag} AS build
 WORKDIR /src
