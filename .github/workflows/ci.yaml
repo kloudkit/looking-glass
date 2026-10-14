@@ -1,0 +1,72 @@
+---
+name: 🧪 CI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/**
+      - Dockerfile
+      - go.mod
+      - go.sum
+      - internal/**
+      - main.go
+  pull_request:
+    paths:
+      - .github/workflows/**
+      - Dockerfile
+      - go.mod
+      - go.sum
+      - internal/**
+      - main.go
+  workflow_call:
+
+permissions:
+  contents: read
+
+# Prefixed, because a called workflow shares its caller's name and the two would wait on each other.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test:
+    name: 🧪 Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v7
+
+      - name: 🔵 Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: 🧪 Test
+        run: go test ./...
+
+  build:
+    name: 📦 Build (dry run)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v7
+
+      - name: 🧰 Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: 🧰 Set up Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: 🐳 Build the image without pushing
+        uses: docker/build-push-action@v7
+        with:
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          context: .
+          platforms: linux/amd64,linux/arm64
+          provenance: false
+          push: false
