@@ -25,12 +25,31 @@ jobs:
       - ci
 
     permissions:
-      contents: read
+      contents: write
       packages: write
 
     steps:
       - name: 📥 Checkout repository
         uses: actions/checkout@v7
+
+      # Before anything is pushed, so a missing CHANGELOG section stops the release.
+      - name: 📝 Extract release notes from CHANGELOG.md
+        run: |
+          awk -v version="${GITHUB_REF_NAME#v}" '
+            index($0, "## [" version "]") == 1 { found = 1; next }
+            found && (/^## \[/ || /^\[[^]]+\]: /) { exit }
+            found { print }
+          ' CHANGELOG.md > "$RUNNER_TEMP/notes.md"
+          test -s "$RUNNER_TEMP/notes.md"
+
+          cat >> "$RUNNER_TEMP/notes.md" <<NOTES
+
+          ## Install
+
+          \`\`\`sh
+          docker run --rm -p 8080:8080 ghcr.io/kloudkit/looking-glass:$GITHUB_REF_NAME
+          \`\`\`
+          NOTES
 
       - name: 🧰 Set up QEMU
         uses: docker/setup-qemu-action@v4
@@ -73,3 +92,12 @@ jobs:
           provenance: false
           push: true
           tags: ${{ steps.meta.outputs.tags }}
+
+      - name: 🔖 Create the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file "$RUNNER_TEMP/notes.md" \
+            --verify-tag
