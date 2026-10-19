@@ -21,13 +21,6 @@ func wsServer(t *testing.T, ctx context.Context, o Options) string {
 	return "ws" + strings.TrimPrefix(srv.URL, "http")
 }
 
-func wsOpts() Options {
-	o := testOpts
-	o.MaxWSDuration = 5 * time.Second
-
-	return o
-}
-
 func dial(t *testing.T, url string, header http.Header) (*websocket.Conn, reflection) {
 	t.Helper()
 
@@ -54,7 +47,7 @@ func dial(t *testing.T, url string, header http.Header) (*websocket.Conn, reflec
 }
 
 func TestWebSocketReflectsThenEchoes(t *testing.T) {
-	conn, ref := dial(t, wsServer(t, context.Background(), wsOpts())+"/live?room=1", nil)
+	conn, ref := dial(t, wsServer(t, context.Background(), testOpts)+"/live?room=1", nil)
 
 	if ref.Method != "GET" || ref.URI != "/live?room=1" || ref.Headers["Upgrade"][0] != "websocket" {
 		t.Errorf("reflection = %+v", ref)
@@ -77,14 +70,14 @@ func TestWebSocketReflectsThenEchoes(t *testing.T) {
 }
 
 func TestWebSocketStripsCrossOriginCookies(t *testing.T) {
-	url := wsServer(t, context.Background(), wsOpts())
+	url := wsServer(t, context.Background(), testOpts)
 
 	header := http.Header{"Origin": {"https://evil.example"}, "Cookie": {"session=secret"}}
 	if _, ref := dial(t, url, header); ref.Headers["Cookie"] != nil {
 		t.Errorf("a cross-origin page was handed the cookies: %v", ref.Headers["Cookie"])
 	}
 
-	o := wsOpts()
+	o := testOpts
 	o.Credentials = true
 	if _, ref := dial(t, wsServer(t, context.Background(), o), header); ref.Headers["Cookie"] == nil {
 		t.Error("with credentials on, the cookies must be reflected")
@@ -92,7 +85,7 @@ func TestWebSocketStripsCrossOriginCookies(t *testing.T) {
 }
 
 func TestWebSocketKeepsSameOriginCookies(t *testing.T) {
-	url := wsServer(t, context.Background(), wsOpts())
+	url := wsServer(t, context.Background(), testOpts)
 	host := strings.TrimPrefix(url, "ws://")
 
 	header := http.Header{"Origin": {"http://" + host}, "Cookie": {"session=mine"}}
@@ -102,7 +95,7 @@ func TestWebSocketKeepsSameOriginCookies(t *testing.T) {
 }
 
 func TestWebSocketMessageTooBig(t *testing.T) {
-	o := wsOpts()
+	o := testOpts
 	o.MaxBody = 16
 	conn, _ := dial(t, wsServer(t, context.Background(), o), nil)
 
@@ -115,7 +108,7 @@ func TestWebSocketMessageTooBig(t *testing.T) {
 }
 
 func TestWebSocketLifetime(t *testing.T) {
-	o := wsOpts()
+	o := testOpts
 	o.MaxWSDuration = 50 * time.Millisecond
 	conn, _ := dial(t, wsServer(t, context.Background(), o), nil)
 
@@ -126,7 +119,7 @@ func TestWebSocketLifetime(t *testing.T) {
 
 func TestWebSocketClosedOnShutdown(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
-	conn, _ := dial(t, wsServer(t, ctx, wsOpts()), nil)
+	conn, _ := dial(t, wsServer(t, ctx, testOpts), nil)
 
 	cancel()
 
@@ -137,7 +130,7 @@ func TestWebSocketClosedOnShutdown(t *testing.T) {
 }
 
 func TestWebSocketStatusRefusesUpgrade(t *testing.T) {
-	url := wsServer(t, context.Background(), wsOpts())
+	url := wsServer(t, context.Background(), testOpts)
 
 	_, resp, err := websocket.Dial(context.Background(), url+"/?glass-status=503", nil)
 	if err == nil || resp == nil || resp.StatusCode != 503 {

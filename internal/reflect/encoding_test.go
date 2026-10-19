@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"compress/zlib"
-	"context"
 	"io"
 	"net/http/httptest"
 	"strings"
@@ -66,11 +65,10 @@ func TestBodyBadCompressionStaysRaw(t *testing.T) {
 
 func TestHandlerCompressesOnRequest(t *testing.T) {
 	for _, encoding := range []string{"gzip", "deflate"} {
-		rec := httptest.NewRecorder()
 		req := httptest.NewRequest("GET", "/x?glass-encoding="+encoding, nil)
 		req.Header.Set(formatOption.header, "json")
 
-		Handler(context.Background(), testOpts)(rec, req)
+		rec := serve(req, testOpts)
 
 		if got := rec.Header().Get("Content-Encoding"); got != encoding {
 			t.Fatalf("%s: content-encoding = %q", encoding, got)
@@ -95,11 +93,10 @@ func TestHandlerCompressesOnRequest(t *testing.T) {
 }
 
 func TestHandlerRejectsUnknownEncoding(t *testing.T) {
-	rec := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/x", nil)
 	req.Header.Set(encodingOption.header, "br")
 
-	Handler(context.Background(), testOpts)(rec, req)
+	rec := serve(req, testOpts)
 
 	if rec.Code != 400 || !strings.Contains(rec.Body.String(), encodingOption.header) {
 		t.Errorf("got %d %q", rec.Code, rec.Body.String())
@@ -107,11 +104,10 @@ func TestHandlerRejectsUnknownEncoding(t *testing.T) {
 }
 
 func TestHandlerDoesNotCompressByDefault(t *testing.T) {
-	rec := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/x", nil)
 	req.Header.Set("Accept-Encoding", "gzip")
 
-	Handler(context.Background(), testOpts)(rec, req)
+	rec := serve(req, testOpts)
 
 	if got := rec.Header().Get("Content-Encoding"); got != "" {
 		t.Errorf("content-encoding = %q, want none", got)

@@ -3,6 +3,7 @@ package reflect
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 	"net/http/httptest"
 	"os"
 	"strings"
@@ -13,10 +14,18 @@ import (
 var testOpts = opts(1024)
 
 func opts(maxBody int64) Options {
-	return Options{MaxBody: maxBody, MaxDelay: time.Second, TrustedProxies: PrivateNetworks}
+	return Options{MaxBody: maxBody, MaxDelay: time.Second, MaxWSDuration: 5 * time.Second, TrustedProxies: PrivateNetworks}
 }
 
-func build_(method, target, body string) reflection {
+// serve answers req with a handler that never shuts down.
+func serve(req *http.Request, o Options) *httptest.ResponseRecorder {
+	rec := httptest.NewRecorder()
+	Handler(context.Background(), o)(rec, req)
+
+	return rec
+}
+
+func reflectOf(method, target, body string) reflection {
 	req := httptest.NewRequest(method, target, strings.NewReader(body))
 	req.Header.Set("X-Trace", "abc")
 
@@ -24,7 +33,7 @@ func build_(method, target, body string) reflection {
 }
 
 func TestBuild(t *testing.T) {
-	ref := build_("POST", "/api?page=2&q=hi", `{"name":"ada"}`)
+	ref := reflectOf("POST", "/api?page=2&q=hi", `{"name":"ada"}`)
 
 	if ref.Method != "POST" || ref.URI != "/api?page=2&q=hi" {
 		t.Errorf("method/uri = %q %q", ref.Method, ref.URI)
@@ -44,7 +53,7 @@ func TestBuild(t *testing.T) {
 }
 
 func TestJSON(t *testing.T) {
-	out := build_("GET", "/x?a=1", "").json()
+	out := reflectOf("GET", "/x?a=1", "").json()
 
 	var parsed map[string]any
 	if err := json.Unmarshal([]byte(out), &parsed); err != nil {
@@ -57,7 +66,7 @@ func TestJSON(t *testing.T) {
 }
 
 func TestHTMLEscapesInput(t *testing.T) {
-	out := build_("POST", "/x", "<script>alert(1)</script>").html()
+	out := reflectOf("POST", "/x", "<script>alert(1)</script>").html()
 
 	if strings.Contains(out, "<script>alert(1)</script>") {
 		t.Errorf("body was not escaped:\n%s", out)
@@ -69,7 +78,7 @@ func TestHTMLEscapesInput(t *testing.T) {
 }
 
 func TestActivityLine(t *testing.T) {
-	line := build_("DELETE", "/gone?id=7", "SENSITIVE-BODY").activity("json", 200)
+	line := reflectOf("DELETE", "/gone?id=7", "SENSITIVE-BODY").activity("json", 200)
 
 	if !strings.Contains(line, "\x1b[") {
 		t.Errorf("expected ANSI color codes:\n%q", line)
@@ -91,7 +100,7 @@ func TestActivityLine(t *testing.T) {
 }
 
 func TestActivitySanitizesControlChars(t *testing.T) {
-	ref := build_("GET", "/x", "")
+	ref := reflectOf("GET", "/x", "")
 	ref.URI = "/x\x1b[2J\x07"
 
 	line := ref.activity("json", 200)
@@ -102,35 +111,32 @@ func TestActivitySanitizesControlChars(t *testing.T) {
 }
 
 func TestHandlerDefaultsToHTML(t *testing.T) {
-	rec := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/page?ping=1", nil)
 
-	Handler(context.Background(), testOpts)(rec, req)
+	rec := serve(req, testOpts)
 
 	assertHTML(t, rec)
 }
 
 func TestHandlerJSONViaHeader(t *testing.T) {
-	rec := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/health", nil)
 	req.Header.Set(formatOption.header, "json")
 
-	Handler(context.Background(), testOpts)(rec, req)
+	rec := serve(req, testOpts)
 
 	assertJSON(t, rec)
 }
 
 func TestHandlerJSONViaQuery(t *testing.T) {
-	rec := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/health?format=json", nil)
 
-	Handler(context.Background(), testOpts)(rec, req)
+	rec := serve(req, testOpts)
 
 	assertJSON(t, rec)
 }
 
 func TestFlat(t *testing.T) {
-	out := build_("POST", "/api?page=2", `{"name":"ada"}`).flat()
+	out := reflectOf("POST", "/api?page=2", `{"name":"ada"}`).flat()
 
 	for _, want := range []string{
 		"POST /api?page=2 HTTP/1.1",
@@ -145,7 +151,7 @@ func TestFlat(t *testing.T) {
 }
 
 func TestHTMLHasCopyControl(t *testing.T) {
-	out := build_("GET", "/x?a=1", "").html()
+	out := reflectOf("GET", "/x?a=1", "").html()
 
 	for _, want := range []string{
 		`id="copy-json"`,
@@ -159,7 +165,7 @@ func TestHTMLHasCopyControl(t *testing.T) {
 }
 
 func TestHTMLHasLogo(t *testing.T) {
-	out := build_("GET", "/x", "").html()
+	out := reflectOf("GET", "/x", "").html()
 
 	for _, want := range []string{
 		`<link rel="icon" href="data:image/svg+xml,`,
@@ -202,7 +208,7 @@ func assertJSON(t *testing.T, rec *httptest.ResponseRecorder) {
 }
 
 func TestClient(t *testing.T) {
-	ref := build_("GET", "/x", "")
+	ref := reflectOf("GET", "/x", "")
 	if ref.Client != "192.0.2.1" {
 		t.Errorf("client = %q, want the remote address without its port", ref.Client)
 	}
@@ -278,7 +284,7 @@ func TestHTMLShowsProxyAndPrettyJSON(t *testing.T) {
 
 func TestServerIsHostname(t *testing.T) {
 	want, _ := os.Hostname()
-	ref := build_("GET", "/x", "")
+	ref := reflectOf("GET", "/x", "")
 
 	if ref.Server != want || !strings.Contains(ref.html(), "served by "+want) {
 		t.Errorf("server = %q, want %q", ref.Server, want)

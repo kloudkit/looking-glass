@@ -10,7 +10,7 @@ import (
 )
 
 func TestBodyParsesJSON(t *testing.T) {
-	ref := build_("POST", "/x", `{"name":"ada"}`)
+	ref := reflectOf("POST", "/x", `{"name":"ada"}`)
 
 	if string(ref.JSON) != `{"name":"ada"}` {
 		t.Errorf("json = %s", ref.JSON)
@@ -22,7 +22,7 @@ func TestBodyParsesJSON(t *testing.T) {
 }
 
 func TestBodyLeavesTextAlone(t *testing.T) {
-	ref := build_("POST", "/x", "not json")
+	ref := reflectOf("POST", "/x", "not json")
 
 	if ref.JSON != nil || ref.Form != nil || ref.Files != nil {
 		t.Errorf("plain text parsed as json=%s form=%v files=%v", ref.JSON, ref.Form, ref.Files)
@@ -35,7 +35,7 @@ func TestBodyLeavesTextAlone(t *testing.T) {
 
 func TestBodyBase64EncodesBinary(t *testing.T) {
 	binary := "\xff\xfe\x00png"
-	ref := build_("POST", "/x", binary)
+	ref := reflectOf("POST", "/x", binary)
 
 	if ref.BodyEncoding != "base64" || ref.Body != base64.StdEncoding.EncodeToString([]byte(binary)) {
 		t.Errorf("body = %q (%s)", ref.Body, ref.BodyEncoding)
