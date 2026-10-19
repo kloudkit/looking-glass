@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-19
+
 ### Added
 
 - ⚡ HTTP/2 without TLS, for clients and proxies that speak it to a plain backend;
@@ -28,7 +30,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   decoded, and parsed, with the new `contentEncoding` field naming what it was
   decoded from. Decoding stops at the body limit, so a small upload can't expand
   past it.
-
 - 🔗 `glass-status` and `glass-delay` query params, for health checks and browsers
   that can't send `X-Glass-Status` or `X-Glass-Delay`. The header wins when both are
   set.
@@ -131,7 +132,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   noted in every rendering.
 - 🐳 Multi-arch (`amd64`/`arm64`) image published to GHCR on tag push.
 
-[Unreleased]: https://github.com/kloudkit/looking-glass/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/kloudkit/looking-glass/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/kloudkit/looking-glass/releases/tag/v0.5.0
 [0.4.0]: https://github.com/kloudkit/looking-glass/releases/tag/v0.4.0
 [0.3.0]: https://github.com/kloudkit/looking-glass/releases/tag/v0.3.0
 [0.2.0]: https://github.com/kloudkit/looking-glass/releases/tag/v0.2.0
