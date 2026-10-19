@@ -11,7 +11,7 @@ import (
 func TestHandlerStatus(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/x", nil)
-	req.Header.Set(StatusHeader, "503")
+	req.Header.Set(statusOption.header, "503")
 
 	Handler(context.Background(), testOpts)(rec, req)
 
@@ -25,7 +25,7 @@ func TestHandlerStatus(t *testing.T) {
 func TestHandlerDelay(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/x", nil)
-	req.Header.Set(DelayHeader, "50ms")
+	req.Header.Set(delayOption.header, "50ms")
 
 	start := time.Now()
 	Handler(context.Background(), testOpts)(rec, req)
@@ -41,8 +41,8 @@ func TestHandlerDelay(t *testing.T) {
 
 func TestHandlerRejectsBadShape(t *testing.T) {
 	for header, value := range map[string]string{
-		StatusHeader: "100",
-		DelayHeader:  "5s",
+		statusOption.header: "100",
+		delayOption.header:  "5s",
 	} {
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest("GET", "/x", nil)
@@ -70,7 +70,7 @@ func TestHandlerShapeViaQuery(t *testing.T) {
 func TestHandlerShapeHeaderWins(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/health?glass-status=503", nil)
-	req.Header.Set(StatusHeader, "500")
+	req.Header.Set(statusOption.header, "500")
 
 	Handler(context.Background(), testOpts)(rec, req)
 
@@ -85,7 +85,7 @@ func TestHandlerDelayEndsOnShutdown(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/x", nil)
-	req.Header.Set(DelayHeader, "1s")
+	req.Header.Set(delayOption.header, "1s")
 
 	start := time.Now()
 	Handler(ctx, testOpts)(rec, req)
@@ -101,7 +101,7 @@ func TestHandlerClientGoneDuringDelay(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/x", nil).WithContext(ctx)
-	req.Header.Set(DelayHeader, "1s")
+	req.Header.Set(delayOption.header, "1s")
 
 	Handler(context.Background(), testOpts)(rec, req)
 

@@ -9,29 +9,38 @@ import (
 	"strings"
 )
 
-const (
-	EncodingHeader = "X-Glass-Encoding"
-	EncodingQuery  = "glass-encoding"
-)
+// codec is a Content-Encoding the standard library can read and write.
+type codec struct {
+	reader func(io.Reader) (io.ReadCloser, error)
+	writer func(io.Writer) io.WriteCloser
+}
+
+var codecs = map[string]codec{
+	"gzip": {
+		reader: func(r io.Reader) (io.ReadCloser, error) { return gzip.NewReader(r) },
+		writer: func(w io.Writer) io.WriteCloser { return gzip.NewWriter(w) },
+	},
+	"deflate": {
+		reader: zlib.NewReader,
+		writer: func(w io.Writer) io.WriteCloser { return zlib.NewWriter(w) },
+	},
+}
 
 // decompress decodes a gzip or deflate body, keeping at most limit bytes so a small upload
 // can't expand past the body limit. Any other encoding, or a stream that doesn't decode, is
 // left as it arrived.
 func decompress(encoding string, data []byte, limit int64) ([]byte, string, bool) {
 	encoding = strings.ToLower(strings.TrimSpace(encoding))
+	if encoding == "x-gzip" {
+		encoding = "gzip"
+	}
 
-	var (
-		zr  io.ReadCloser
-		err error
-	)
-	switch encoding {
-	case "gzip", "x-gzip":
-		zr, err = gzip.NewReader(bytes.NewReader(data))
-	case "deflate":
-		zr, err = zlib.NewReader(bytes.NewReader(data))
-	default:
+	c, ok := codecs[encoding]
+	if !ok {
 		return nil, "", false
 	}
+
+	zr, err := c.reader(bytes.NewReader(data))
 	if err != nil {
 		return nil, "", false
 	}
@@ -43,10 +52,6 @@ func decompress(encoding string, data []byte, limit int64) ([]byte, string, bool
 	}
 
 	return decoded, encoding, true
-}
-
-func validEncoding(encoding string) bool {
-	return encoding == "gzip" || encoding == "deflate"
 }
 
 // write sends body with status, compressed when the request asked for an encoding.
@@ -62,10 +67,7 @@ func write(w http.ResponseWriter, status int, encoding, body string) {
 	w.Header().Add("Vary", "Accept-Encoding")
 	w.WriteHeader(status)
 
-	var zw io.WriteCloser = gzip.NewWriter(w)
-	if encoding == "deflate" {
-		zw = zlib.NewWriter(w)
-	}
+	zw := codecs[encoding].writer(w)
 	// The client is the only one who could hear about a failed write.
 	_, _ = io.WriteString(zw, body)
 	_ = zw.Close()

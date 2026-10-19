@@ -12,13 +12,8 @@ import (
 	"time"
 )
 
-const (
-	FormatHeader = "X-Glass-Format"
-	FormatQuery  = "format"
-
-	// nginx's status for a client that hung up before the answer, as go-httpbin logs it.
-	statusClientClosed = 499
-)
+// nginx's status for a client that hung up before the answer, as go-httpbin logs it.
+const statusClientClosed = 499
 
 // PrivateNetworks are trusted as proxies by default: a reverse proxy in front of Looking
 // Glass sits on one, and a caller from the internet can't.
@@ -139,16 +134,7 @@ func Handler(ctx context.Context, opts Options) http.HandlerFunc {
 }
 
 func wantsJSON(r *http.Request) bool {
-	return strings.EqualFold(option(r, FormatHeader, FormatQuery), "json")
-}
-
-// option reads a setting from its header, or else from its query param.
-func option(r *http.Request, header, query string) string {
-	if v := r.Header.Get(header); v != "" {
-		return v
-	}
-
-	return r.URL.Query().Get(query)
+	return strings.EqualFold(formatOption.from(r), "json")
 }
 
 // client walks X-Forwarded-For from the right, past trusted proxies, to the first address

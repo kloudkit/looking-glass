@@ -57,15 +57,15 @@ var htmlTemplate = template.Must(template.New("reflect").Parse(`<!doctype html>
 <div class="meta">{{.Time}} &middot; {{.Client}}{{if .Proxy}} via {{.Proxy}}{{end}} &middot; {{.Host}}{{if .Server}} &middot; served by {{.Server}}{{end}}</div>
 {{if .Query}}
 <h2>Query</h2>
-<table>{{range $k, $vs := .Query}}{{range $vs}}<tr><th>{{$k}}</th><td>{{.}}</td></tr>{{end}}{{end}}</table>
+{{template "table" .Query}}
 {{end}}
 {{if .Headers}}
 <h2>Headers</h2>
-<table>{{range $k, $vs := .Headers}}{{range $vs}}<tr><th>{{$k}}</th><td>{{.}}</td></tr>{{end}}{{end}}</table>
+{{template "table" .Headers}}
 {{end}}
 {{if .Form}}
 <h2>Form</h2>
-<table>{{range $k, $vs := .Form}}{{range $vs}}<tr><th>{{$k}}</th><td>{{.}}</td></tr>{{end}}{{end}}</table>
+{{template "table" .Form}}
 {{end}}
 {{if .Files}}
 <h2>Files</h2>
@@ -89,7 +89,7 @@ document.querySelectorAll('.copy button').forEach(function (btn) {
 </script>
 </body>
 </html>
-`))
+{{define "table"}}<table>{{range $k, $vs := .}}{{range $vs}}<tr><th>{{$k}}</th><td>{{.}}</td></tr>{{end}}{{end}}</table>{{end}}`))
 
 func (ref reflection) html() string {
 	data := struct {

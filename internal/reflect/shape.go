@@ -7,13 +7,28 @@ import (
 	"time"
 )
 
-// The query params are prefixed, since a `status` or `delay` param belongs to the request.
-const (
-	StatusHeader = "X-Glass-Status"
-	StatusQuery  = "glass-status"
-	DelayHeader  = "X-Glass-Delay"
-	DelayQuery   = "glass-delay"
+// setting is a request option, read from its header or else from its query param.
+type setting struct{ header, query string }
+
+// The shaping params are prefixed, since a `status` or `delay` param belongs to the request.
+var (
+	formatOption   = setting{"X-Glass-Format", "format"}
+	statusOption   = setting{"X-Glass-Status", "glass-status"}
+	delayOption    = setting{"X-Glass-Delay", "glass-delay"}
+	encodingOption = setting{"X-Glass-Encoding", "glass-encoding"}
 )
+
+func (s setting) from(r *http.Request) string {
+	if v := r.Header.Get(s.header); v != "" {
+		return v
+	}
+
+	return r.URL.Query().Get(s.query)
+}
+
+func (s setting) invalid(want, got string) error {
+	return fmt.Errorf("%s (or ?%s=) must be %s, got %q", s.header, s.query, want, got)
+}
 
 // answer is how a request asks to be answered.
 type answer struct {
@@ -26,25 +41,25 @@ type answer struct {
 func shape(r *http.Request, maxDelay time.Duration) (answer, error) {
 	a := answer{status: http.StatusOK}
 
-	if v := option(r, StatusHeader, StatusQuery); v != "" {
+	if v := statusOption.from(r); v != "" {
 		code, err := strconv.Atoi(v)
 		if err != nil || code < 200 || code > 599 {
-			return a, fmt.Errorf("%s (or ?%s=) must be a status from 200 to 599, got %q", StatusHeader, StatusQuery, v)
+			return a, statusOption.invalid("a status from 200 to 599", v)
 		}
 		a.status = code
 	}
 
-	if v := option(r, DelayHeader, DelayQuery); v != "" {
+	if v := delayOption.from(r); v != "" {
 		d, err := parseDelay(v)
 		if err != nil || d < 0 || d > maxDelay {
-			return a, fmt.Errorf("%s (or ?%s=) must be a duration from 0 to %s, got %q", DelayHeader, DelayQuery, maxDelay, v)
+			return a, delayOption.invalid("a duration from 0 to "+maxDelay.String(), v)
 		}
 		a.delay = d
 	}
 
-	if v := option(r, EncodingHeader, EncodingQuery); v != "" {
-		if !validEncoding(v) {
-			return a, fmt.Errorf("%s (or ?%s=) must be gzip or deflate, got %q", EncodingHeader, EncodingQuery, v)
+	if v := encodingOption.from(r); v != "" {
+		if _, ok := codecs[v]; !ok {
+			return a, encodingOption.invalid("gzip or deflate", v)
 		}
 		a.encoding = v
 	}

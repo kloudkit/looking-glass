@@ -68,7 +68,7 @@ func TestHandlerCompressesOnRequest(t *testing.T) {
 	for _, encoding := range []string{"gzip", "deflate"} {
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest("GET", "/x?glass-encoding="+encoding, nil)
-		req.Header.Set(FormatHeader, "json")
+		req.Header.Set(formatOption.header, "json")
 
 		Handler(context.Background(), testOpts)(rec, req)
 
@@ -97,11 +97,11 @@ func TestHandlerCompressesOnRequest(t *testing.T) {
 func TestHandlerRejectsUnknownEncoding(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/x", nil)
-	req.Header.Set(EncodingHeader, "br")
+	req.Header.Set(encodingOption.header, "br")
 
 	Handler(context.Background(), testOpts)(rec, req)
 
-	if rec.Code != 400 || !strings.Contains(rec.Body.String(), EncodingHeader) {
+	if rec.Code != 400 || !strings.Contains(rec.Body.String(), encodingOption.header) {
 		t.Errorf("got %d %q", rec.Code, rec.Body.String())
 	}
 }

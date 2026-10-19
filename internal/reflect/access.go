@@ -23,6 +23,18 @@ func (ref reflection) activity(format string, status int) string {
 		size += "+"
 	}
 
+	return ref.line(format, status, size)
+}
+
+// closed is the line for a WebSocket that ended: its close code, how long it stayed open,
+// and the messages it received and sent.
+func (ref reflection) closed(code int, open time.Duration, in, out int) string {
+	return ref.line("ws closed", code, fmt.Sprintf("%s  %d in  %d out", open.Round(time.Millisecond), in, out))
+}
+
+// line is who asked for what, then what it was answered with. Everything that came from the
+// request is sanitized, so it can't write escape codes to the operator's terminal.
+func (ref reflection) line(format string, status int, detail string) string {
 	return strings.Join([]string{
 		mutedStyle.Render(sanitize(ref.Client)),
 		methodStyle.Render(ref.Method),
@@ -30,21 +42,7 @@ func (ref reflection) activity(format string, status int) string {
 		mutedStyle.Render("→"),
 		formatStyle.Render(format),
 		formatStyle.Render(strconv.Itoa(status)),
-		mutedStyle.Render(size),
-	}, "  ")
-}
-
-// closed is the line for a WebSocket that ended: its close code, how long it stayed open,
-// and the messages it received and sent.
-func (ref reflection) closed(code int, open time.Duration, in, out int) string {
-	return strings.Join([]string{
-		mutedStyle.Render(sanitize(ref.Client)),
-		methodStyle.Render(ref.Method),
-		pathStyle.Render(sanitize(ref.URI)),
-		mutedStyle.Render("→"),
-		formatStyle.Render("ws closed"),
-		formatStyle.Render(strconv.Itoa(code)),
-		mutedStyle.Render(fmt.Sprintf("%s  %d in  %d out", open.Round(time.Millisecond), in, out)),
+		mutedStyle.Render(detail),
 	}, "  ")
 }
 

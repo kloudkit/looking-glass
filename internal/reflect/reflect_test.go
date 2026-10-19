@@ -113,7 +113,7 @@ func TestHandlerDefaultsToHTML(t *testing.T) {
 func TestHandlerJSONViaHeader(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/health", nil)
-	req.Header.Set(FormatHeader, "json")
+	req.Header.Set(formatOption.header, "json")
 
 	Handler(context.Background(), testOpts)(rec, req)
 
