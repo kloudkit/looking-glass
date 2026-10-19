@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- ⚡ HTTP/2 without TLS, for clients and proxies that speak it to a plain backend;
+  `proto` then reads `HTTP/2.0`.
+- 🏷️ A `server` field with the hostname of the replica that answered, also shown in
+  the HTML view.
+
 - 🔗 `glass-status` and `glass-delay` query params, for health checks and browsers
   that can't send `X-Glass-Status` or `X-Glass-Delay`. The header wins when both are
   set.

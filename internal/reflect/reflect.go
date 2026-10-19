@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"net/netip"
+	"os"
 	"strings"
 	"time"
 )
@@ -31,6 +32,9 @@ var PrivateNetworks = []netip.Prefix{
 	netip.MustParsePrefix("::1/128"),
 }
 
+// hostname names the replica that answered, for a Looking Glass behind a load balancer.
+var hostname, _ = os.Hostname()
+
 type reflection struct {
 	Method       string              `json:"method"`
 	URI          string              `json:"uri"`
@@ -39,6 +43,7 @@ type reflection struct {
 	Remote       string              `json:"remote"`
 	Client       string              `json:"client"`
 	Host         string              `json:"host"`
+	Server       string              `json:"server"`
 	Query        map[string][]string `json:"query"`
 	Headers      map[string][]string `json:"headers"`
 	Body         string              `json:"body"`
@@ -67,6 +72,7 @@ func build(r *http.Request, opts Options) reflection {
 		Remote:  r.RemoteAddr,
 		Client:  client(r, opts.TrustedProxies),
 		Host:    r.Host,
+		Server:  hostname,
 		Query:   r.URL.Query(),
 		Headers: r.Header,
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -272,5 +273,14 @@ func TestHTMLShowsProxyAndPrettyJSON(t *testing.T) {
 		if !strings.Contains(out, want) {
 			t.Errorf("HTML missing %q", want)
 		}
+	}
+}
+
+func TestServerIsHostname(t *testing.T) {
+	want, _ := os.Hostname()
+	ref := build_("GET", "/x", "")
+
+	if ref.Server != want || !strings.Contains(ref.html(), "served by "+want) {
+		t.Errorf("server = %q, want %q", ref.Server, want)
 	}
 }

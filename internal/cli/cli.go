@@ -123,9 +123,15 @@ func serve(cmd *cobra.Command, _ []string) error {
 		TrustedProxies: trusted,
 	}))
 
+	// HTTP/2 without TLS, for clients and proxies that speak it to a plain backend.
+	var protocols http.Protocols
+	protocols.SetHTTP1(true)
+	protocols.SetUnencryptedHTTP2(true)
+
 	srv := &http.Server{
-		Addr:    ":" + port,
-		Handler: mux,
+		Addr:      ":" + port,
+		Handler:   mux,
+		Protocols: &protocols,
 	}
 
 	failed := make(chan error, 1)

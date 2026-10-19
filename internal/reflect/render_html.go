@@ -54,7 +54,7 @@ var htmlTemplate = template.Must(template.New("reflect").Parse(`<!doctype html>
 <pre id="copy-flat" hidden>{{.CopyFlat}}</pre>
 <div class="brand"><svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><path d="M13.6,1.4 A14.8,14.8 0 0 0 13.6,30.6" fill="none" stroke="#babbf1" stroke-width="2.4" stroke-linecap="round" class="lg-a"/><path d="M18.4,1.4 A14.8,14.8 0 0 1 18.4,30.6" fill="none" stroke="#e5c890" stroke-width="2.4" stroke-linecap="round" class="lg-b"/><path d="M8.2,10.5 L12.4,16.0 L8.2,21.4" fill="none" stroke="#babbf1" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="lg-a lg-cl"/><path d="M23.7,10.5 L19.6,16.0 L23.7,21.4" fill="none" stroke="#e5c890" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="lg-b lg-cr"/></svg><span>l<span class="l">o</span><span class="y">o</span>king glass</span></div>
 <h1>{{.Method}} {{.URI}} <small>{{.Proto}}</small></h1>
-<div class="meta">{{.Time}} &middot; {{.Client}}{{if .Proxy}} via {{.Proxy}}{{end}} &middot; {{.Host}}</div>
+<div class="meta">{{.Time}} &middot; {{.Client}}{{if .Proxy}} via {{.Proxy}}{{end}} &middot; {{.Host}}{{if .Server}} &middot; served by {{.Server}}{{end}}</div>
 {{if .Query}}
 <h2>Query</h2>
 <table>{{range $k, $vs := .Query}}{{range $vs}}<tr><th>{{$k}}</th><td>{{.}}</td></tr>{{end}}{{end}}</table>
