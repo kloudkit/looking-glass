@@ -7,28 +7,30 @@ import (
 	"time"
 )
 
+// The query params are prefixed, since a `status` or `delay` param belongs to the request.
 const (
 	StatusHeader = "X-Glass-Status"
+	StatusQuery  = "glass-status"
 	DelayHeader  = "X-Glass-Delay"
+	DelayQuery   = "glass-delay"
 )
 
 // shape reads the status and delay a request asks to be answered with.
-// Both are headers only: a query param named `status` or `delay` belongs to the request.
 func shape(r *http.Request, maxDelay time.Duration) (int, time.Duration, error) {
 	status := http.StatusOK
-	if v := r.Header.Get(StatusHeader); v != "" {
+	if v := option(r, StatusHeader, StatusQuery); v != "" {
 		code, err := strconv.Atoi(v)
 		if err != nil || code < 200 || code > 599 {
-			return 0, 0, fmt.Errorf("%s must be a status from 200 to 599, got %q", StatusHeader, v)
+			return 0, 0, fmt.Errorf("%s (or ?%s=) must be a status from 200 to 599, got %q", StatusHeader, StatusQuery, v)
 		}
 		status = code
 	}
 
 	var delay time.Duration
-	if v := r.Header.Get(DelayHeader); v != "" {
+	if v := option(r, DelayHeader, DelayQuery); v != "" {
 		d, err := parseDelay(v)
 		if err != nil || d < 0 || d > maxDelay {
-			return 0, 0, fmt.Errorf("%s must be a duration from 0 to %s, got %q", DelayHeader, maxDelay, v)
+			return 0, 0, fmt.Errorf("%s (or ?%s=) must be a duration from 0 to %s, got %q", DelayHeader, DelayQuery, maxDelay, v)
 		}
 		delay = d
 	}

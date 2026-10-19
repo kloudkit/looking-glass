@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/netip"
 	"os"
 	"os/signal"
 	"regexp"
@@ -65,6 +66,8 @@ func init() {
 	f.StringP("port", "p", envOr("PORT", defaultPort), "port to listen on (env: PORT)")
 	f.Int64("max-body", envInt("MAX_BODY_BYTES", defaultMaxBody), "max body bytes reflected before cut-off (env: MAX_BODY_BYTES)")
 	f.Duration("max-delay", envDuration("MAX_DELAY", defaultMaxDelay), "longest X-Glass-Delay a request may ask for (env: MAX_DELAY)")
+	f.Bool("cors-credentials", envBool("CORS_CREDENTIALS"), "let cross-origin pages send cookies and read them back (env: CORS_CREDENTIALS)")
+	f.StringSlice("trusted-proxies", envList("TRUSTED_PROXIES", defaultTrustedProxies()), "proxies whose X-Forwarded-For is believed, as IPs or CIDRs (env: TRUSTED_PROXIES)")
 }
 
 func Execute() {
@@ -102,17 +105,28 @@ func serve(cmd *cobra.Command, _ []string) error {
 	if maxDelay < 0 {
 		return fmt.Errorf("--max-delay must not be negative, got %s", maxDelay)
 	}
+	credentials, _ := cmd.Flags().GetBool("cors-credentials")
+	proxies, _ := cmd.Flags().GetStringSlice("trusted-proxies")
+	trusted, err := parsePrefixes(proxies)
+	if err != nil {
+		return err
+	}
+
+	ctx, stop := signal.NotifyContext(cmd.Context(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", reflect.Handler(maxBody, maxDelay))
+	mux.HandleFunc("/", reflect.Handler(ctx, reflect.Options{
+		MaxBody:        maxBody,
+		MaxDelay:       maxDelay,
+		Credentials:    credentials,
+		TrustedProxies: trusted,
+	}))
 
 	srv := &http.Server{
 		Addr:    ":" + port,
 		Handler: mux,
 	}
-
-	ctx, stop := signal.NotifyContext(cmd.Context(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
 
 	failed := make(chan error, 1)
 	go func() {
@@ -167,4 +181,55 @@ func envDuration(key string, fallback time.Duration) time.Duration {
 	}
 
 	return fallback
+}
+
+func envBool(key string) bool {
+	v, _ := strconv.ParseBool(os.Getenv(key))
+
+	return v
+}
+
+// envList splits a comma-separated variable; set but empty, it is an empty list.
+func envList(key string, fallback []string) []string {
+	v, ok := os.LookupEnv(key)
+	if !ok {
+		return fallback
+	}
+
+	var list []string
+	for item := range strings.SplitSeq(v, ",") {
+		if item = strings.TrimSpace(item); item != "" {
+			list = append(list, item)
+		}
+	}
+
+	return list
+}
+
+func defaultTrustedProxies() []string {
+	list := make([]string, len(reflect.PrivateNetworks))
+	for i, prefix := range reflect.PrivateNetworks {
+		list[i] = prefix.String()
+	}
+
+	return list
+}
+
+// parsePrefixes takes CIDRs, or bare IPs as single-address ranges.
+func parsePrefixes(list []string) ([]netip.Prefix, error) {
+	prefixes := make([]netip.Prefix, 0, len(list))
+	for _, item := range list {
+		if ip, err := netip.ParseAddr(item); err == nil {
+			prefixes = append(prefixes, netip.PrefixFrom(ip, ip.BitLen()))
+			continue
+		}
+
+		prefix, err := netip.ParsePrefix(item)
+		if err != nil {
+			return nil, fmt.Errorf("--trusted-proxies takes IPs or CIDRs, got %q", item)
+		}
+		prefixes = append(prefixes, prefix)
+	}
+
+	return prefixes, nil
 }

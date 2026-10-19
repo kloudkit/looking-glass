@@ -1,6 +1,7 @@
 package reflect
 
 import (
+	"context"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -12,7 +13,7 @@ func TestHandlerStatus(t *testing.T) {
 	req := httptest.NewRequest("GET", "/x", nil)
 	req.Header.Set(StatusHeader, "503")
 
-	Handler(1024, time.Second)(rec, req)
+	Handler(context.Background(), testOpts)(rec, req)
 
 	if rec.Code != 503 {
 		t.Errorf("status = %d, want 503", rec.Code)
@@ -27,7 +28,7 @@ func TestHandlerDelay(t *testing.T) {
 	req.Header.Set(DelayHeader, "50ms")
 
 	start := time.Now()
-	Handler(1024, time.Second)(rec, req)
+	Handler(context.Background(), testOpts)(rec, req)
 
 	if took := time.Since(start); took < 50*time.Millisecond {
 		t.Errorf("answered after %s, want at least 50ms", took)
@@ -47,7 +48,7 @@ func TestHandlerRejectsBadShape(t *testing.T) {
 		req := httptest.NewRequest("GET", "/x", nil)
 		req.Header.Set(header, value)
 
-		Handler(1024, time.Second)(rec, req)
+		Handler(context.Background(), testOpts)(rec, req)
 
 		if rec.Code != 400 || !strings.Contains(rec.Body.String(), header) {
 			t.Errorf("%s: %s: got %d %q", header, value, rec.Code, rec.Body.String())
@@ -55,11 +56,65 @@ func TestHandlerRejectsBadShape(t *testing.T) {
 	}
 }
 
+func TestHandlerShapeViaQuery(t *testing.T) {
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/health?glass-status=503&glass-delay=10ms", nil)
+
+	Handler(context.Background(), testOpts)(rec, req)
+
+	if rec.Code != 503 {
+		t.Errorf("status = %d, want 503", rec.Code)
+	}
+}
+
+func TestHandlerShapeHeaderWins(t *testing.T) {
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/health?glass-status=503", nil)
+	req.Header.Set(StatusHeader, "500")
+
+	Handler(context.Background(), testOpts)(rec, req)
+
+	if rec.Code != 500 {
+		t.Errorf("status = %d, want the header's 500", rec.Code)
+	}
+}
+
+func TestHandlerDelayEndsOnShutdown(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/x", nil)
+	req.Header.Set(DelayHeader, "1s")
+
+	start := time.Now()
+	Handler(ctx, testOpts)(rec, req)
+
+	if took := time.Since(start); took > 500*time.Millisecond || rec.Code != 200 {
+		t.Errorf("answered %d after %s, want 200 at once", rec.Code, took)
+	}
+}
+
+func TestHandlerClientGoneDuringDelay(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/x", nil).WithContext(ctx)
+	req.Header.Set(DelayHeader, "1s")
+
+	Handler(context.Background(), testOpts)(rec, req)
+
+	if rec.Body.Len() != 0 {
+		t.Errorf("answered a client that hung up: %q", rec.Body.String())
+	}
+}
+
 func TestStatusQueryParamIsJustReflected(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/orders?status=open&delay=soon", nil)
 
-	Handler(1024, time.Second)(rec, req)
+	Handler(context.Background(), testOpts)(rec, req)
 
 	if rec.Code != 200 {
 		t.Errorf("status = %d, want 200", rec.Code)

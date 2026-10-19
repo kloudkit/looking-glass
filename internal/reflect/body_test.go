@@ -50,7 +50,7 @@ func TestBodyParsesURLEncodedForm(t *testing.T) {
 	req := httptest.NewRequest("POST", "/x", strings.NewReader("name=ada&tag=a&tag=b"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	ref := build(req, 1024)
+	ref := build(req, opts(1024))
 
 	if got := ref.Form["tag"]; len(got) != 2 || got[1] != "b" || ref.Form["name"][0] != "ada" {
 		t.Errorf("form = %v", ref.Form)
@@ -77,7 +77,7 @@ func TestBodyParsesMultipart(t *testing.T) {
 	req := httptest.NewRequest("POST", "/x", &buf)
 	req.Header.Set("Content-Type", mw.FormDataContentType())
 
-	ref := build(req, 1<<20)
+	ref := build(req, opts(1<<20))
 
 	if ref.Form["name"][0] != "ada" {
 		t.Errorf("form = %v", ref.Form)
@@ -94,17 +94,28 @@ func TestBodyTruncatedIsNotParsed(t *testing.T) {
 	req := httptest.NewRequest("POST", "/x", strings.NewReader(`{"name":"ada"}`))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	ref := build(req, 5)
+	ref := build(req, opts(5))
 
 	if ref.JSON != nil || ref.Form != nil {
 		t.Errorf("a cut-off body was parsed: json=%s form=%v", ref.JSON, ref.Form)
 	}
 }
 
+func TestBodyTruncatedKeepsUTF8(t *testing.T) {
+	// "é" is two bytes; a cut after 4 bytes splits the second one.
+	req := httptest.NewRequest("POST", "/x", strings.NewReader("aéééé"))
+
+	ref := build(req, opts(4))
+
+	if ref.BodyEncoding != "utf-8" || ref.Body != "aé" {
+		t.Errorf("body = %q (%s), want %q", ref.Body, ref.BodyEncoding, "aé")
+	}
+}
+
 func TestBodyTruncatedKeepsDeclaredSize(t *testing.T) {
 	req := httptest.NewRequest("POST", "/x", strings.NewReader(strings.Repeat("x", 50)))
 
-	ref := build(req, 10)
+	ref := build(req, opts(10))
 
 	if !ref.Truncated || len(ref.Body) != 10 || ref.BodyBytes != 50 {
 		t.Errorf("body %d bytes, bodyBytes %d; want 10 and 50", len(ref.Body), ref.BodyBytes)

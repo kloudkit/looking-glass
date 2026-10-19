@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- 🔗 `glass-status` and `glass-delay` query params, for health checks and browsers
+  that can't send `X-Glass-Status` or `X-Glass-Delay`. The header wins when both are
+  set.
+- 🍪 `--cors-credentials` *(env: `CORS_CREDENTIALS`)*, which lets cross-origin pages
+  send cookies and read the reflection.
+- 🛡️ `--trusted-proxies` *(env: `TRUSTED_PROXIES`)*, the IPs or CIDRs whose
+  `X-Forwarded-For` is believed. It defaults to the private and loopback ranges; set
+  it empty to trust none.
+
+### Changed
+
+- 🔒 CORS no longer allows credentials by default. The reflection carries the
+  request's cookies, so any site could read the ones scoped to Looking Glass's host.
+- 🧭 `client` is the rightmost `X-Forwarded-For` address a trusted proxy vouches for,
+  not the first one, and a peer that isn't trusted is the client whatever it
+  forwards. A caller can no longer pick the address in the log.
+- ⏱️ A request waiting on a delay is answered as soon as Looking Glass shuts down,
+  instead of being cut off after the 5-second grace period.
+- 📜 The activity line is written once the response is sent, and shows `499` when
+  the client hung up during a delay.
+
+### Fixed
+
+- 🔤 A body cut off in the middle of a UTF-8 character drops that character instead
+  of being reflected as base64.
+
 ## [0.4.0] - 2026-10-19
 
 ### Added

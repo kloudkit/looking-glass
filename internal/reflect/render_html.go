@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"html/template"
+	"net"
 	"strings"
 )
 
@@ -105,7 +106,7 @@ func (ref reflection) html() string {
 	}
 
 	// The client came through a proxy, so the direct peer is shown too.
-	if ref.Headers["X-Forwarded-For"] != nil {
+	if peer, _, _ := net.SplitHostPort(ref.Remote); peer != ref.Client {
 		data.Proxy = ref.Remote
 	}
 

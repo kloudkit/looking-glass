@@ -1,6 +1,7 @@
 package reflect
 
 import (
+	"context"
 	"encoding/json"
 	"net/http/httptest"
 	"strings"
@@ -8,11 +9,17 @@ import (
 	"time"
 )
 
+var testOpts = opts(1024)
+
+func opts(maxBody int64) Options {
+	return Options{MaxBody: maxBody, MaxDelay: time.Second, TrustedProxies: PrivateNetworks}
+}
+
 func build_(method, target, body string) reflection {
 	req := httptest.NewRequest(method, target, strings.NewReader(body))
 	req.Header.Set("X-Trace", "abc")
 
-	return build(req, 1024)
+	return build(req, testOpts)
 }
 
 func TestBuild(t *testing.T) {
@@ -97,7 +104,7 @@ func TestHandlerDefaultsToHTML(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/page?ping=1", nil)
 
-	Handler(1024, time.Second)(rec, req)
+	Handler(context.Background(), testOpts)(rec, req)
 
 	assertHTML(t, rec)
 }
@@ -107,7 +114,7 @@ func TestHandlerJSONViaHeader(t *testing.T) {
 	req := httptest.NewRequest("GET", "/health", nil)
 	req.Header.Set(FormatHeader, "json")
 
-	Handler(1024, time.Second)(rec, req)
+	Handler(context.Background(), testOpts)(rec, req)
 
 	assertJSON(t, rec)
 }
@@ -116,7 +123,7 @@ func TestHandlerJSONViaQuery(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/health?format=json", nil)
 
-	Handler(1024, time.Second)(rec, req)
+	Handler(context.Background(), testOpts)(rec, req)
 
 	assertJSON(t, rec)
 }
@@ -199,19 +206,42 @@ func TestClient(t *testing.T) {
 		t.Errorf("client = %q, want the remote address without its port", ref.Client)
 	}
 
-	req := httptest.NewRequest("GET", "/x", nil)
-	req.Header.Set("X-Forwarded-For", "203.0.113.7, 10.0.0.2")
+	for _, tc := range []struct {
+		peer, forwarded, want string
+	}{
+		{"10.0.0.2:1234", "203.0.113.7", "203.0.113.7"},
+		{"10.0.0.2:1234", "6.6.6.6, 203.0.113.7, 10.0.0.9", "203.0.113.7"},
+		{"10.0.0.2:1234", "10.0.0.8, 10.0.0.9", "10.0.0.8"},
+		{"10.0.0.2:1234", ", 203.0.113.7,", "203.0.113.7"},
+		{"[::ffff:10.0.0.2]:1234", "203.0.113.7", "203.0.113.7"},
+		{"192.0.2.1:1234", "203.0.113.7", "192.0.2.1"},
+	} {
+		req := httptest.NewRequest("GET", "/x", nil)
+		req.RemoteAddr = tc.peer
+		req.Header.Set("X-Forwarded-For", tc.forwarded)
 
-	if got := build(req, 1024).Client; got != "203.0.113.7" {
-		t.Errorf("client = %q, want the first X-Forwarded-For entry", got)
+		if got := build(req, testOpts).Client; got != tc.want {
+			t.Errorf("peer %s, X-Forwarded-For %q: client = %q, want %q", tc.peer, tc.forwarded, got, tc.want)
+		}
+	}
+}
+
+func TestClientTrustsNoProxyWhenEmpty(t *testing.T) {
+	req := httptest.NewRequest("GET", "/x", nil)
+	req.RemoteAddr = "10.0.0.2:1234"
+	req.Header.Set("X-Forwarded-For", "203.0.113.7")
+
+	if got := build(req, Options{MaxBody: 1024}).Client; got != "10.0.0.2" {
+		t.Errorf("client = %q, want the peer", got)
 	}
 }
 
 func TestActivityShowsSanitizedClient(t *testing.T) {
 	req := httptest.NewRequest("GET", "/x", nil)
+	req.RemoteAddr = "10.0.0.2:1234"
 	req.Header.Set("X-Forwarded-For", "203.0.113.7\x1b[2J")
 
-	line := build(req, 1024).activity("html", 200)
+	line := build(req, testOpts).activity("html", 200)
 
 	if !strings.Contains(line, "203.0.113.7") || strings.Contains(line, "\x1b[2J") {
 		t.Errorf("activity line = %q", line)
@@ -224,7 +254,7 @@ func TestFlatSortsHeaders(t *testing.T) {
 		req.Header.Set(h, "1")
 	}
 
-	out := build(req, 1024).flat()
+	out := build(req, testOpts).flat()
 
 	if a, b, c := strings.Index(out, "X-A"), strings.Index(out, "X-B"), strings.Index(out, "X-C"); a >= b || b >= c {
 		t.Errorf("headers out of order:\n%s", out)
@@ -233,11 +263,12 @@ func TestFlatSortsHeaders(t *testing.T) {
 
 func TestHTMLShowsProxyAndPrettyJSON(t *testing.T) {
 	req := httptest.NewRequest("POST", "/x", strings.NewReader(`{"name":"ada"}`))
+	req.RemoteAddr = "10.0.0.2:1234"
 	req.Header.Set("X-Forwarded-For", "203.0.113.7")
 
-	out := build(req, 1024).html()
+	out := build(req, testOpts).html()
 
-	for _, want := range []string{"203.0.113.7 via 192.0.2.1:1234", "{\n  &#34;name&#34;: &#34;ada&#34;\n}"} {
+	for _, want := range []string{"203.0.113.7 via 10.0.0.2:1234", "{\n  &#34;name&#34;: &#34;ada&#34;\n}"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("HTML missing %q", want)
 		}

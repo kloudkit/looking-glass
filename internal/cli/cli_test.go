@@ -29,3 +29,37 @@ func TestReleaseTagRejectsPseudoVersions(t *testing.T) {
 		}
 	}
 }
+
+func TestParsePrefixes(t *testing.T) {
+	got, err := parsePrefixes([]string{"10.0.0.0/8", "192.0.2.7", "::1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want := []string{"10.0.0.0/8", "192.0.2.7/32", "::1/128"}
+	for i, prefix := range got {
+		if prefix.String() != want[i] {
+			t.Errorf("prefix %d = %s, want %s", i, prefix, want[i])
+		}
+	}
+
+	if _, err := parsePrefixes([]string{"traefik"}); err == nil {
+		t.Error("expected an error for a name")
+	}
+}
+
+func TestEnvList(t *testing.T) {
+	t.Setenv("LG_LIST", " 10.0.0.1, ,10.0.0.0/8 ")
+	if got := envList("LG_LIST", nil); len(got) != 2 || got[0] != "10.0.0.1" || got[1] != "10.0.0.0/8" {
+		t.Errorf("list = %q", got)
+	}
+
+	t.Setenv("LG_LIST", "")
+	if got := envList("LG_LIST", []string{"x"}); len(got) != 0 {
+		t.Errorf("an empty variable must trust nothing, got %q", got)
+	}
+
+	if got := envList("LG_UNSET", []string{"x"}); len(got) != 1 {
+		t.Errorf("an unset variable must keep the default, got %q", got)
+	}
+}
