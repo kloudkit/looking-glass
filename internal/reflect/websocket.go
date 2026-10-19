@@ -76,20 +76,8 @@ func serveWebSocket(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	})
 	defer stop()
 
-	start, in, out := time.Now(), 0, 0
-	err = conn.Write(ctx, websocket.MessageText, []byte(ref.json()))
-	for err == nil {
-		out++
-
-		var (
-			typ  websocket.MessageType
-			data []byte
-		)
-		if typ, data, err = conn.Read(context.Background()); err == nil {
-			in++
-			err = conn.Write(ctx, typ, data)
-		}
-	}
+	start := time.Now()
+	in, out, err := echo(ctx, conn, []byte(ref.json()))
 
 	code := websocket.CloseStatus(err)
 	if code == -1 {
@@ -98,4 +86,27 @@ func serveWebSocket(ctx context.Context, w http.ResponseWriter, r *http.Request,
 	_ = conn.CloseNow()
 
 	log.Print(ref.closed(int(code), time.Since(start), in, out))
+}
+
+// echo sends first, then every message back as it came, until a read or a write fails. It
+// counts the messages it received and sent. Reads have no deadline: the lifetime and shutdown
+// end a socket by closing it, with a close frame.
+func echo(ctx context.Context, conn *websocket.Conn, first []byte) (in, out int, err error) {
+	if err := conn.Write(ctx, websocket.MessageText, first); err != nil {
+		return 0, 0, err
+	}
+	out++
+
+	for {
+		typ, data, err := conn.Read(context.Background())
+		if err != nil {
+			return in, out, err
+		}
+		in++
+
+		if err := conn.Write(ctx, typ, data); err != nil {
+			return in, out, err
+		}
+		out++
+	}
 }

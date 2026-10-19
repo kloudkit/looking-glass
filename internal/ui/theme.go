@@ -24,11 +24,10 @@ var (
 
 // Styles shared by the startup lines and the activity log.
 var (
-	Muted  = lipgloss.NewStyle().Foreground(Overlay0)
-	Plain  = lipgloss.NewStyle().Foreground(Text)
-	Left   = lipgloss.NewStyle().Foreground(Lavender).Bold(true)
-	Right  = lipgloss.NewStyle().Foreground(Yellow)
-	Danger = lipgloss.NewStyle().Foreground(Red)
+	Muted = lipgloss.NewStyle().Foreground(Overlay0)
+	Plain = lipgloss.NewStyle().Foreground(Text)
+	Left  = lipgloss.NewStyle().Foreground(Lavender).Bold(true)
+	Right = lipgloss.NewStyle().Foreground(Yellow)
 )
 
 // ColorScheme follows the logo: the request in lavender, its reflection in yellow.

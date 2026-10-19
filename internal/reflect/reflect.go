@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/netip"
 	"os"
+	"slices"
 	"strings"
 	"time"
 )
@@ -159,9 +160,14 @@ func client(r *http.Request, trusted []netip.Prefix) string {
 	}
 
 	for i := len(hops) - 1; i >= 0; i-- {
-		if !isTrusted(hops[i], trusted) || i == 0 {
+		if !isTrusted(hops[i], trusted) {
 			return hops[i]
 		}
+	}
+
+	// Every hop is a trusted proxy, so the first one is as close to the client as it gets.
+	if len(hops) > 0 {
+		return hops[0]
 	}
 
 	return peer
@@ -174,11 +180,6 @@ func isTrusted(addr string, trusted []netip.Prefix) bool {
 	}
 
 	ip = ip.Unmap()
-	for _, prefix := range trusted {
-		if prefix.Contains(ip) {
-			return true
-		}
-	}
 
-	return false
+	return slices.ContainsFunc(trusted, func(p netip.Prefix) bool { return p.Contains(ip) })
 }
