@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-19
+
 ### Added
 
 - 🚦 `X-Glass-Status` and `X-Glass-Delay` request headers, which answer with another
@@ -81,7 +83,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   noted in every rendering.
 - 🐳 Multi-arch (`amd64`/`arm64`) image published to GHCR on tag push.
 
-[Unreleased]: https://github.com/kloudkit/looking-glass/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/kloudkit/looking-glass/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/kloudkit/looking-glass/releases/tag/v0.4.0
 [0.3.0]: https://github.com/kloudkit/looking-glass/releases/tag/v0.3.0
 [0.2.0]: https://github.com/kloudkit/looking-glass/releases/tag/v0.2.0
 [0.1.0]: https://github.com/kloudkit/looking-glass/releases/tag/v0.1.0
