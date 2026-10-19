@@ -28,6 +28,7 @@ const (
 	defaultPort     = "8080"
 	defaultMaxBody  = 1 << 20 // 1 MiB
 	defaultMaxDelay = 10 * time.Second
+	defaultMaxWS    = time.Minute
 )
 
 // version is stamped at build time with -ldflags "-X .../internal/cli.version=v1.2.3".
@@ -66,6 +67,7 @@ func init() {
 	f.StringP("port", "p", envOr("PORT", defaultPort), "port to listen on (env: PORT)")
 	f.Int64("max-body", envInt("MAX_BODY_BYTES", defaultMaxBody), "max body bytes reflected before cut-off (env: MAX_BODY_BYTES)")
 	f.Duration("max-delay", envDuration("MAX_DELAY", defaultMaxDelay), "longest X-Glass-Delay a request may ask for (env: MAX_DELAY)")
+	f.Duration("max-ws-duration", envDuration("MAX_WS_DURATION", defaultMaxWS), "longest a WebSocket stays open (env: MAX_WS_DURATION)")
 	f.Bool("cors-credentials", envBool("CORS_CREDENTIALS"), "let cross-origin pages send cookies and read them back (env: CORS_CREDENTIALS)")
 	f.StringSlice("trusted-proxies", envList("TRUSTED_PROXIES", defaultTrustedProxies()), "proxies whose X-Forwarded-For is believed, as IPs or CIDRs (env: TRUSTED_PROXIES)")
 }
@@ -105,6 +107,10 @@ func serve(cmd *cobra.Command, _ []string) error {
 	if maxDelay < 0 {
 		return fmt.Errorf("--max-delay must not be negative, got %s", maxDelay)
 	}
+	maxWS, _ := cmd.Flags().GetDuration("max-ws-duration")
+	if maxWS <= 0 {
+		return fmt.Errorf("--max-ws-duration must be positive, got %s", maxWS)
+	}
 	credentials, _ := cmd.Flags().GetBool("cors-credentials")
 	proxies, _ := cmd.Flags().GetStringSlice("trusted-proxies")
 	trusted, err := parsePrefixes(proxies)
@@ -119,6 +125,7 @@ func serve(cmd *cobra.Command, _ []string) error {
 	mux.HandleFunc("/", reflect.Handler(ctx, reflect.Options{
 		MaxBody:        maxBody,
 		MaxDelay:       maxDelay,
+		MaxWSDuration:  maxWS,
 		Credentials:    credentials,
 		TrustedProxies: trusted,
 	}))

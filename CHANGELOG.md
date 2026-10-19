@@ -16,6 +16,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 🗜️ `X-Glass-Encoding` *(or `?glass-encoding=`)*: `gzip` or `deflate` compresses
   the response whatever `Accept-Encoding` says, to see whether a proxy or a client
   really decompresses it.
+- 🔌 WebSockets on any path: the first message is the handshake's reflection as JSON,
+  and every message after it is echoed back as it came, text or binary.
+  `--max-ws-duration` *(env: `MAX_WS_DURATION`, default `1m`)* caps how long a socket
+  stays open, messages are capped at `--max-body`, and shutdown closes every socket
+  with `1001`. A cross-origin page doesn't get the cookies its browser attached,
+  unless `--cors-credentials` is on. `glass-status` refuses the upgrade with that
+  status, and `glass-delay` waits before accepting it. The activity log adds a line
+  when a socket closes, with its close code, duration and message counts.
 - 📦 A request body sent with `Content-Encoding: gzip` or `deflate` is reflected
   decoded, and parsed, with the new `contentEncoding` field naming what it was
   decoded from. Decoding stops at the body limit, so a small upload can't expand

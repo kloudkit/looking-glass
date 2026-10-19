@@ -59,6 +59,7 @@ type reflection struct {
 type Options struct {
 	MaxBody        int64          // body bytes reflected before the cut-off
 	MaxDelay       time.Duration  // longest delay a request may ask for
+	MaxWSDuration  time.Duration  // longest a WebSocket stays open
 	Credentials    bool           // let cross-origin pages send cookies and read the reflection
 	TrustedProxies []netip.Prefix // peers whose X-Forwarded-For is believed
 }
@@ -116,6 +117,13 @@ func Handler(ctx context.Context, opts Options) http.HandlerFunc {
 			return
 		case <-ctx.Done():
 		case <-timer.C:
+		}
+
+		// Any other status refuses the upgrade, so a client can test a failed connect.
+		if isWebSocket(r) && answer.status == http.StatusOK {
+			serveWebSocket(ctx, w, r, ref, opts)
+
+			return
 		}
 
 		log.Print(ref.activity(format, answer.status))

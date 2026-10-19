@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/kloudkit/looking-glass/internal/ui"
 )
@@ -30,6 +31,20 @@ func (ref reflection) activity(format string, status int) string {
 		formatStyle.Render(format),
 		formatStyle.Render(strconv.Itoa(status)),
 		mutedStyle.Render(size),
+	}, "  ")
+}
+
+// closed is the line for a WebSocket that ended: its close code, how long it stayed open,
+// and the messages it received and sent.
+func (ref reflection) closed(code int, open time.Duration, in, out int) string {
+	return strings.Join([]string{
+		mutedStyle.Render(sanitize(ref.Client)),
+		methodStyle.Render(ref.Method),
+		pathStyle.Render(sanitize(ref.URI)),
+		mutedStyle.Render("→"),
+		formatStyle.Render("ws closed"),
+		formatStyle.Render(strconv.Itoa(code)),
+		mutedStyle.Render(fmt.Sprintf("%s  %d in  %d out", open.Round(time.Millisecond), in, out)),
 	}, "  ")
 }
 
