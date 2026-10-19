@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- 🚦 `X-Glass-Status` and `X-Glass-Delay` request headers, which answer with another
+  status or after a wait, so a proxy's error page, a retry or a timeout can be tested.
+  `--max-delay` *(env: `MAX_DELAY`, default `10s`)* caps the wait. A bad value is
+  answered `400`.
+- 🌍 CORS: every response allows the request's `Origin` with credentials, and a
+  preflight is answered `204` with the method and headers it asked for, so a page on
+  any origin can read the reflection.
+- 🧭 A `client` field with the first `X-Forwarded-For` address, so a request behind a
+  proxy shows who sent it. The activity log and the HTML view use it.
+- 🧩 `json`, `form` and `files` fields with the body parsed as JSON, as form fields
+  *(urlencoded or multipart)*, and as the multipart uploads by name, type and size.
+  The HTML view indents a JSON body and lists form fields and files.
+
+### Changed
+
+- 🧱 A body that isn't valid UTF-8 is reflected as base64, flagged by the new
+  `bodyEncoding` field, instead of having its invalid bytes replaced with `�`.
+- 📏 `bodyBytes` of a cut-off body is its `Content-Length` when the client sent one,
+  rather than the size of the part that was kept.
+- 📜 The activity log shows the response status, and the client without its port.
+- 🔤 **Copy as Raw** lists headers sorted by name instead of in random order.
+
 ## [0.3.0] - 2026-10-13
 
 ### Added

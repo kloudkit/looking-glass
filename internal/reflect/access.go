@@ -2,6 +2,7 @@ package reflect
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/kloudkit/looking-glass/internal/ui"
@@ -15,18 +16,19 @@ var (
 	pathStyle   = ui.Plain
 )
 
-func (ref reflection) activity(format string) string {
+func (ref reflection) activity(format string, status int) string {
 	size := fmt.Sprintf("%db", ref.BodyBytes)
 	if ref.Truncated {
 		size += "+"
 	}
 
 	return strings.Join([]string{
-		mutedStyle.Render(ref.Remote),
+		mutedStyle.Render(sanitize(ref.Client)),
 		methodStyle.Render(ref.Method),
 		pathStyle.Render(sanitize(ref.URI)),
 		mutedStyle.Render("→"),
 		formatStyle.Render(format),
+		formatStyle.Render(strconv.Itoa(status)),
 		mutedStyle.Render(size),
 	}, "  ")
 }

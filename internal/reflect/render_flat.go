@@ -2,6 +2,8 @@ package reflect
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 )
 
@@ -11,8 +13,8 @@ func (ref reflection) flat() string {
 	fmt.Fprintf(&b, "%s %s %s\n", ref.Method, ref.URI, ref.Proto)
 	fmt.Fprintf(&b, "Host: %s\n", ref.Host)
 
-	for key, values := range ref.Headers {
-		for _, value := range values {
+	for _, key := range slices.Sorted(maps.Keys(ref.Headers)) {
+		for _, value := range ref.Headers[key] {
 			fmt.Fprintf(&b, "%s: %s\n", key, value)
 		}
 	}

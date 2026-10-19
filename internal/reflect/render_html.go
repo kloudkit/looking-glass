@@ -1,6 +1,8 @@
 package reflect
 
 import (
+	"bytes"
+	"encoding/json"
 	"html/template"
 	"strings"
 )
@@ -47,11 +49,11 @@ var htmlTemplate = template.Must(template.New("reflect").Parse(`<!doctype html>
   <button type="button" data-copy="copy-json">JSON</button>
   <button type="button" data-copy="copy-flat">Raw</button>
 </div>
-<pre id="copy-json" hidden>{{.JSON}}</pre>
-<pre id="copy-flat" hidden>{{.Flat}}</pre>
+<pre id="copy-json" hidden>{{.CopyJSON}}</pre>
+<pre id="copy-flat" hidden>{{.CopyFlat}}</pre>
 <div class="brand"><svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><path d="M13.6,1.4 A14.8,14.8 0 0 0 13.6,30.6" fill="none" stroke="#babbf1" stroke-width="2.4" stroke-linecap="round" class="lg-a"/><path d="M18.4,1.4 A14.8,14.8 0 0 1 18.4,30.6" fill="none" stroke="#e5c890" stroke-width="2.4" stroke-linecap="round" class="lg-b"/><path d="M8.2,10.5 L12.4,16.0 L8.2,21.4" fill="none" stroke="#babbf1" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="lg-a lg-cl"/><path d="M23.7,10.5 L19.6,16.0 L23.7,21.4" fill="none" stroke="#e5c890" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="lg-b lg-cr"/></svg><span>l<span class="l">o</span><span class="y">o</span>king glass</span></div>
 <h1>{{.Method}} {{.URI}} <small>{{.Proto}}</small></h1>
-<div class="meta">{{.Time}} &middot; {{.Remote}} &middot; {{.Host}}</div>
+<div class="meta">{{.Time}} &middot; {{.Client}}{{if .Proxy}} via {{.Proxy}}{{end}} &middot; {{.Host}}</div>
 {{if .Query}}
 <h2>Query</h2>
 <table>{{range $k, $vs := .Query}}{{range $vs}}<tr><th>{{$k}}</th><td>{{.}}</td></tr>{{end}}{{end}}</table>
@@ -60,9 +62,17 @@ var htmlTemplate = template.Must(template.New("reflect").Parse(`<!doctype html>
 <h2>Headers</h2>
 <table>{{range $k, $vs := .Headers}}{{range $vs}}<tr><th>{{$k}}</th><td>{{.}}</td></tr>{{end}}{{end}}</table>
 {{end}}
+{{if .Form}}
+<h2>Form</h2>
+<table>{{range $k, $vs := .Form}}{{range $vs}}<tr><th>{{$k}}</th><td>{{.}}</td></tr>{{end}}{{end}}</table>
+{{end}}
+{{if .Files}}
+<h2>Files</h2>
+<table>{{range $k, $fs := .Files}}{{range $fs}}<tr><th>{{$k}}</th><td>{{.Filename}} &middot; {{.ContentType}} &middot; {{.Bytes}} bytes</td></tr>{{end}}{{end}}</table>
+{{end}}
 {{if .BodyBytes}}
-<h2>Body ({{.BodyBytes}} bytes{{if .Truncated}}<span class="truncated">, truncated</span>{{end}})</h2>
-<pre>{{.Body}}</pre>
+<h2>Body ({{.BodyBytes}} bytes{{if eq .BodyEncoding "base64"}}, base64{{end}}{{if .Truncated}}<span class="truncated">, truncated</span>{{end}})</h2>
+<pre>{{.Pretty}}</pre>
 {{end}}
 <script>
 document.querySelectorAll('.copy button').forEach(function (btn) {
@@ -83,12 +93,25 @@ document.querySelectorAll('.copy button').forEach(function (btn) {
 func (ref reflection) html() string {
 	data := struct {
 		reflection
-		JSON string
-		Flat string
+		CopyJSON string
+		CopyFlat string
+		Proxy    string
+		Pretty   string
 	}{
 		reflection: ref,
-		JSON:       ref.json(),
-		Flat:       ref.flat(),
+		CopyJSON:   ref.json(),
+		CopyFlat:   ref.flat(),
+		Pretty:     ref.Body,
+	}
+
+	// The client came through a proxy, so the direct peer is shown too.
+	if ref.Headers["X-Forwarded-For"] != nil {
+		data.Proxy = ref.Remote
+	}
+
+	var pretty bytes.Buffer
+	if json.Indent(&pretty, ref.JSON, "", "  ") == nil {
+		data.Pretty = pretty.String()
 	}
 
 	var b strings.Builder

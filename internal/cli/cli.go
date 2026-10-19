@@ -24,8 +24,9 @@ import (
 )
 
 const (
-	defaultPort    = "8080"
-	defaultMaxBody = 1 << 20 // 1 MiB
+	defaultPort     = "8080"
+	defaultMaxBody  = 1 << 20 // 1 MiB
+	defaultMaxDelay = 10 * time.Second
 )
 
 // version is stamped at build time with -ldflags "-X .../internal/cli.version=v1.2.3".
@@ -52,7 +53,9 @@ var rootCmd = &cobra.Command{
 	Long: "See exactly what is hitting your service.\n\n" +
 		"Looking Glass answers every method on every path with the request it received.",
 	Example: "# reflect on :9000, cutting bodies off at 64 KiB\n" +
-		"looking-glass --port 9000 --max-body 65536",
+		"looking-glass --port 9000 --max-body 65536\n\n" +
+		"# let requests ask for up to a minute of X-Glass-Delay\n" +
+		"looking-glass --max-delay 1m",
 	Args: cobra.NoArgs,
 	RunE: serve,
 }
@@ -61,6 +64,7 @@ func init() {
 	f := rootCmd.Flags()
 	f.StringP("port", "p", envOr("PORT", defaultPort), "port to listen on (env: PORT)")
 	f.Int64("max-body", envInt("MAX_BODY_BYTES", defaultMaxBody), "max body bytes reflected before cut-off (env: MAX_BODY_BYTES)")
+	f.Duration("max-delay", envDuration("MAX_DELAY", defaultMaxDelay), "longest X-Glass-Delay a request may ask for (env: MAX_DELAY)")
 }
 
 func Execute() {
@@ -94,9 +98,13 @@ func serve(cmd *cobra.Command, _ []string) error {
 	if maxBody <= 0 {
 		return fmt.Errorf("--max-body must be positive, got %d", maxBody)
 	}
+	maxDelay, _ := cmd.Flags().GetDuration("max-delay")
+	if maxDelay < 0 {
+		return fmt.Errorf("--max-delay must not be negative, got %s", maxDelay)
+	}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", reflect.Handler(maxBody))
+	mux.HandleFunc("/", reflect.Handler(maxBody, maxDelay))
 
 	srv := &http.Server{
 		Addr:    ":" + port,
@@ -145,6 +153,16 @@ func envInt(key string, fallback int64) int64 {
 	if v := os.Getenv(key); v != "" {
 		if n, err := strconv.ParseInt(v, 10, 64); err == nil && n > 0 {
 			return n
+		}
+	}
+
+	return fallback
+}
+
+func envDuration(key string, fallback time.Duration) time.Duration {
+	if v := os.Getenv(key); v != "" {
+		if d, err := time.ParseDuration(v); err == nil && d >= 0 {
+			return d
 		}
 	}
 

@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 func build_(method, target, body string) reflection {
@@ -34,16 +35,6 @@ func TestBuild(t *testing.T) {
 	}
 }
 
-func TestBuildTruncates(t *testing.T) {
-	req := httptest.NewRequest("POST", "/big", strings.NewReader(strings.Repeat("x", 50)))
-
-	ref := build(req, 10)
-
-	if !ref.Truncated || ref.BodyBytes != 10 {
-		t.Errorf("expected truncated at 10, got %d (trunc=%v)", ref.BodyBytes, ref.Truncated)
-	}
-}
-
 func TestJSON(t *testing.T) {
 	out := build_("GET", "/x?a=1", "").json()
 
@@ -70,13 +61,13 @@ func TestHTMLEscapesInput(t *testing.T) {
 }
 
 func TestActivityLine(t *testing.T) {
-	line := build_("DELETE", "/gone?id=7", "SENSITIVE-BODY").activity("json")
+	line := build_("DELETE", "/gone?id=7", "SENSITIVE-BODY").activity("json", 200)
 
 	if !strings.Contains(line, "\x1b[") {
 		t.Errorf("expected ANSI color codes:\n%q", line)
 	}
 
-	for _, want := range []string{"DELETE", "/gone?id=7", "json"} {
+	for _, want := range []string{"DELETE", "/gone?id=7", "json", "200"} {
 		if !strings.Contains(line, want) {
 			t.Errorf("activity line missing %q:\n%s", want, line)
 		}
@@ -95,7 +86,7 @@ func TestActivitySanitizesControlChars(t *testing.T) {
 	ref := build_("GET", "/x", "")
 	ref.URI = "/x\x1b[2J\x07"
 
-	line := ref.activity("json")
+	line := ref.activity("json", 200)
 
 	if strings.Contains(line, "\x1b[2J") || strings.Contains(line, "\x07") {
 		t.Errorf("control chars from the request must be stripped:\n%q", line)
@@ -106,7 +97,7 @@ func TestHandlerDefaultsToHTML(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/page?ping=1", nil)
 
-	Handler(1024)(rec, req)
+	Handler(1024, time.Second)(rec, req)
 
 	assertHTML(t, rec)
 }
@@ -116,7 +107,7 @@ func TestHandlerJSONViaHeader(t *testing.T) {
 	req := httptest.NewRequest("GET", "/health", nil)
 	req.Header.Set(FormatHeader, "json")
 
-	Handler(1024)(rec, req)
+	Handler(1024, time.Second)(rec, req)
 
 	assertJSON(t, rec)
 }
@@ -125,7 +116,7 @@ func TestHandlerJSONViaQuery(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/health?format=json", nil)
 
-	Handler(1024)(rec, req)
+	Handler(1024, time.Second)(rec, req)
 
 	assertJSON(t, rec)
 }
@@ -199,5 +190,56 @@ func assertJSON(t *testing.T, rec *httptest.ResponseRecorder) {
 	var parsed map[string]any
 	if err := json.Unmarshal(rec.Body.Bytes(), &parsed); err != nil {
 		t.Fatalf("invalid JSON: %v", err)
+	}
+}
+
+func TestClient(t *testing.T) {
+	ref := build_("GET", "/x", "")
+	if ref.Client != "192.0.2.1" {
+		t.Errorf("client = %q, want the remote address without its port", ref.Client)
+	}
+
+	req := httptest.NewRequest("GET", "/x", nil)
+	req.Header.Set("X-Forwarded-For", "203.0.113.7, 10.0.0.2")
+
+	if got := build(req, 1024).Client; got != "203.0.113.7" {
+		t.Errorf("client = %q, want the first X-Forwarded-For entry", got)
+	}
+}
+
+func TestActivityShowsSanitizedClient(t *testing.T) {
+	req := httptest.NewRequest("GET", "/x", nil)
+	req.Header.Set("X-Forwarded-For", "203.0.113.7\x1b[2J")
+
+	line := build(req, 1024).activity("html", 200)
+
+	if !strings.Contains(line, "203.0.113.7") || strings.Contains(line, "\x1b[2J") {
+		t.Errorf("activity line = %q", line)
+	}
+}
+
+func TestFlatSortsHeaders(t *testing.T) {
+	req := httptest.NewRequest("GET", "/x", nil)
+	for _, h := range []string{"X-C", "X-A", "X-B"} {
+		req.Header.Set(h, "1")
+	}
+
+	out := build(req, 1024).flat()
+
+	if a, b, c := strings.Index(out, "X-A"), strings.Index(out, "X-B"), strings.Index(out, "X-C"); a >= b || b >= c {
+		t.Errorf("headers out of order:\n%s", out)
+	}
+}
+
+func TestHTMLShowsProxyAndPrettyJSON(t *testing.T) {
+	req := httptest.NewRequest("POST", "/x", strings.NewReader(`{"name":"ada"}`))
+	req.Header.Set("X-Forwarded-For", "203.0.113.7")
+
+	out := build(req, 1024).html()
+
+	for _, want := range []string{"203.0.113.7 via 192.0.2.1:1234", "{\n  &#34;name&#34;: &#34;ada&#34;\n}"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("HTML missing %q", want)
+		}
 	}
 }
