@@ -3,7 +3,6 @@ package reflect
 import (
 	"context"
 	"encoding/json"
-	"io"
 	"log"
 	"net"
 	"net/http"
@@ -36,23 +35,24 @@ var PrivateNetworks = []netip.Prefix{
 var hostname, _ = os.Hostname()
 
 type reflection struct {
-	Method       string              `json:"method"`
-	URI          string              `json:"uri"`
-	Proto        string              `json:"proto"`
-	Time         string              `json:"time"`
-	Remote       string              `json:"remote"`
-	Client       string              `json:"client"`
-	Host         string              `json:"host"`
-	Server       string              `json:"server"`
-	Query        map[string][]string `json:"query"`
-	Headers      map[string][]string `json:"headers"`
-	Body         string              `json:"body"`
-	BodyEncoding string              `json:"bodyEncoding"`
-	BodyBytes    int64               `json:"bodyBytes"`
-	Truncated    bool                `json:"truncated"`
-	JSON         json.RawMessage     `json:"json"`
-	Form         map[string][]string `json:"form"`
-	Files        map[string][]upload `json:"files"`
+	Method          string              `json:"method"`
+	URI             string              `json:"uri"`
+	Proto           string              `json:"proto"`
+	Time            string              `json:"time"`
+	Remote          string              `json:"remote"`
+	Client          string              `json:"client"`
+	Host            string              `json:"host"`
+	Server          string              `json:"server"`
+	Query           map[string][]string `json:"query"`
+	Headers         map[string][]string `json:"headers"`
+	Body            string              `json:"body"`
+	BodyEncoding    string              `json:"bodyEncoding"`
+	ContentEncoding string              `json:"contentEncoding"`
+	BodyBytes       int64               `json:"bodyBytes"`
+	Truncated       bool                `json:"truncated"`
+	JSON            json.RawMessage     `json:"json"`
+	Form            map[string][]string `json:"form"`
+	Files           map[string][]upload `json:"files"`
 }
 
 // Options configure the handler.
@@ -93,7 +93,7 @@ func Handler(ctx context.Context, opts Options) http.HandlerFunc {
 			return
 		}
 
-		status, delay, err := shape(r, opts.MaxDelay)
+		answer, err := shape(r, opts.MaxDelay)
 		if err != nil {
 			log.Print(ref.activity("error", http.StatusBadRequest))
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -106,7 +106,7 @@ func Handler(ctx context.Context, opts Options) http.HandlerFunc {
 			format = "json"
 		}
 
-		timer := time.NewTimer(delay)
+		timer := time.NewTimer(answer.delay)
 		defer timer.Stop()
 
 		select {
@@ -118,19 +118,15 @@ func Handler(ctx context.Context, opts Options) http.HandlerFunc {
 		case <-timer.C:
 		}
 
-		log.Print(ref.activity(format, status))
+		log.Print(ref.activity(format, answer.status))
 
-		if format == "html" {
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			w.WriteHeader(status)
-			io.WriteString(w, ref.html())
-
-			return
+		body, contentType := ref.html(), "text/html; charset=utf-8"
+		if format == "json" {
+			body, contentType = ref.json(), "application/json"
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(status)
-		io.WriteString(w, ref.json())
+		w.Header().Set("Content-Type", contentType)
+		write(w, answer.status, answer.encoding, body)
 	}
 }
 

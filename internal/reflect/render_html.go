@@ -72,7 +72,7 @@ var htmlTemplate = template.Must(template.New("reflect").Parse(`<!doctype html>
 <table>{{range $k, $fs := .Files}}{{range $fs}}<tr><th>{{$k}}</th><td>{{.Filename}} &middot; {{.ContentType}} &middot; {{.Bytes}} bytes</td></tr>{{end}}{{end}}</table>
 {{end}}
 {{if .BodyBytes}}
-<h2>Body ({{.BodyBytes}} bytes{{if eq .BodyEncoding "base64"}}, base64{{end}}{{if .Truncated}}<span class="truncated">, truncated</span>{{end}})</h2>
+<h2>Body ({{.BodyBytes}} bytes{{if eq .BodyEncoding "base64"}}, base64{{end}}{{if .ContentEncoding}}, {{.ContentEncoding}}-decoded{{end}}{{if .Truncated}}<span class="truncated">, truncated</span>{{end}})</h2>
 <pre>{{.Pretty}}</pre>
 {{end}}
 <script>

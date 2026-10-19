@@ -15,27 +15,41 @@ const (
 	DelayQuery   = "glass-delay"
 )
 
-// shape reads the status and delay a request asks to be answered with.
-func shape(r *http.Request, maxDelay time.Duration) (int, time.Duration, error) {
-	status := http.StatusOK
+// answer is how a request asks to be answered.
+type answer struct {
+	status   int
+	delay    time.Duration
+	encoding string
+}
+
+// shape reads the status, delay and encoding a request asks to be answered with.
+func shape(r *http.Request, maxDelay time.Duration) (answer, error) {
+	a := answer{status: http.StatusOK}
+
 	if v := option(r, StatusHeader, StatusQuery); v != "" {
 		code, err := strconv.Atoi(v)
 		if err != nil || code < 200 || code > 599 {
-			return 0, 0, fmt.Errorf("%s (or ?%s=) must be a status from 200 to 599, got %q", StatusHeader, StatusQuery, v)
+			return a, fmt.Errorf("%s (or ?%s=) must be a status from 200 to 599, got %q", StatusHeader, StatusQuery, v)
 		}
-		status = code
+		a.status = code
 	}
 
-	var delay time.Duration
 	if v := option(r, DelayHeader, DelayQuery); v != "" {
 		d, err := parseDelay(v)
 		if err != nil || d < 0 || d > maxDelay {
-			return 0, 0, fmt.Errorf("%s (or ?%s=) must be a duration from 0 to %s, got %q", DelayHeader, DelayQuery, maxDelay, v)
+			return a, fmt.Errorf("%s (or ?%s=) must be a duration from 0 to %s, got %q", DelayHeader, DelayQuery, maxDelay, v)
 		}
-		delay = d
+		a.delay = d
 	}
 
-	return status, delay, nil
+	if v := option(r, EncodingHeader, EncodingQuery); v != "" {
+		if !validEncoding(v) {
+			return a, fmt.Errorf("%s (or ?%s=) must be gzip or deflate, got %q", EncodingHeader, EncodingQuery, v)
+		}
+		a.encoding = v
+	}
+
+	return a, nil
 }
 
 // parseDelay takes a Go duration (`1.5s`, `300ms`) or a number of seconds.

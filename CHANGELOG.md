@@ -13,6 +13,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `proto` then reads `HTTP/2.0`.
 - 🏷️ A `server` field with the hostname of the replica that answered, also shown in
   the HTML view.
+- 🗜️ `X-Glass-Encoding` *(or `?glass-encoding=`)*: `gzip` or `deflate` compresses
+  the response whatever `Accept-Encoding` says, to see whether a proxy or a client
+  really decompresses it.
+- 📦 A request body sent with `Content-Encoding: gzip` or `deflate` is reflected
+  decoded, and parsed, with the new `contentEncoding` field naming what it was
+  decoded from. Decoding stops at the body limit, so a small upload can't expand
+  past it.
 
 - 🔗 `glass-status` and `glass-delay` query params, for health checks and browsers
   that can't send `X-Glass-Status` or `X-Glass-Delay`. The header wins when both are

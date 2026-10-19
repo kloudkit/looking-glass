@@ -25,6 +25,13 @@ func (ref *reflection) readBody(r *http.Request, maxBody int64) {
 	}
 
 	data, _ := io.ReadAll(io.LimitReader(r.Body, maxBody+1))
+
+	// A compressed body is reflected decoded; its Content-Length no longer measures it.
+	declared := r.ContentLength
+	if decoded, encoding, ok := decompress(r.Header.Get("Content-Encoding"), data, maxBody+1); ok {
+		data, ref.ContentEncoding, declared = decoded, encoding, -1
+	}
+
 	ref.Truncated = int64(len(data)) > maxBody
 	if ref.Truncated {
 		data = trimPartialRune(data[:maxBody])
@@ -32,8 +39,8 @@ func (ref *reflection) readBody(r *http.Request, maxBody int64) {
 
 	// A cut-off body still reports its full size when the client declared one.
 	ref.BodyBytes = int64(len(data))
-	if ref.Truncated && r.ContentLength > ref.BodyBytes {
-		ref.BodyBytes = r.ContentLength
+	if ref.Truncated && declared > ref.BodyBytes {
+		ref.BodyBytes = declared
 	}
 
 	ref.Body = string(data)
